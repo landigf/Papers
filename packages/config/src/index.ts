@@ -1,5 +1,8 @@
 import path from "node:path"
+import { fileURLToPath } from "node:url"
 import { z } from "zod"
+
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..")
 
 function parseBoolean(value: string | undefined, defaultValue: boolean): boolean {
   if (value === undefined) {
@@ -11,7 +14,7 @@ function parseBoolean(value: string | undefined, defaultValue: boolean): boolean
 
 const configSchema = z.object({
   DATABASE_URL: z.string().optional(),
-  PGLITE_DATA_DIR: z.string().default(path.resolve(process.cwd(), "packages/db/.data")),
+  PGLITE_DATA_DIR: z.string().default(path.resolve(repoRoot, "packages/db/.data")),
   BETTER_AUTH_SECRET: z.string().optional(),
   BETTER_AUTH_URL: z.string().default("http://localhost:3000"),
   BETTER_AUTH_TRUSTED_ORIGINS: z.string().default("http://localhost:3000"),

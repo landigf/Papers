@@ -2,7 +2,16 @@
   "$schema": "https://biomejs.dev/schemas/2.4.8/schema.json",
   "files": {
     "ignoreUnknown": true,
-    "includes": ["**", "!node_modules", "!.turbo", "!coverage", "!dist", "!**/.next"]
+    "includes": [
+      "**",
+      "!node_modules",
+      "!.turbo",
+      "!coverage",
+      "!dist",
+      "!**/.next",
+      "!apps/web/next-env.d.ts",
+      "!packages/db/.data"
+    ]
   },
   "formatter": {
     "enabled": true,
