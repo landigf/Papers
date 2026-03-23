@@ -1,0 +1,33 @@
+{
+  "name": "papers",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A web-first research sharing platform for papers, discussion, and collaboration.",
+  "license": "Apache-2.0",
+  "packageManager": "npm@10.9.2",
+  "engines": {
+    "node": ">=23 <25"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "lint": "biome check . && turbo run lint",
+    "test": "turbo run test",
+    "check": "turbo run check",
+    "format": "biome format --write . && turbo run format",
+    "dev": "npm --workspace @papers/web run dev"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.8",
+    "@types/node": "^24.8.1",
+    "@types/pg": "^8.15.5",
+    "drizzle-kit": "^0.31.7",
+    "tsx": "^4.20.6",
+    "turbo": "^2.5.8",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.1"
+  }
+}

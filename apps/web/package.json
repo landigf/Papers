@@ -1,0 +1,33 @@
+{
+  "name": "@papers/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "biome check app components lib trigger package.json tsconfig.json next.config.ts",
+    "test": "vitest run --passWithNoTests",
+    "check": "next build",
+    "format": "biome format --write app components lib trigger package.json tsconfig.json next.config.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1014.0",
+    "@papers/ai": "0.1.0",
+    "@papers/auth": "0.1.0",
+    "@papers/config": "0.1.0",
+    "@papers/contracts": "0.1.0",
+    "@papers/db": "0.1.0",
+    "@papers/ui": "0.1.0",
+    "@trigger.dev/sdk": "^4.4.3",
+    "next": "^16.2.1",
+    "pdf-lib": "^1.17.1",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2"
+  }
+}

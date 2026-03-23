@@ -1,0 +1,22 @@
+{
+  "name": "@papers/db",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "biome check src test package.json tsconfig.json",
+    "test": "vitest run",
+    "check": "tsc --project tsconfig.json --noEmit",
+    "format": "biome format --write src test package.json tsconfig.json"
+  },
+  "dependencies": {
+    "@papers/config": "0.1.0",
+    "@papers/contracts": "0.1.0",
+    "drizzle-orm": "^0.45.1",
+    "pg": "^8.16.3"
+  }
+}
