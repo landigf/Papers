@@ -327,6 +327,36 @@ export function slugify(value: string): string {
     .replace(/^-+|-+$/g, "")
 }
 
+export const searchInputSchema = z.object({
+  query: z.string().min(1).max(200),
+})
+export type SearchInput = z.infer<typeof searchInputSchema>
+
+export const searchResultSetSchema = z.object({
+  query: z.string(),
+  papers: z.array(feedEntrySchema),
+  researchers: z.array(profileSchema),
+  topics: z.array(topicSchema.extend({ paperCount: z.number().int().nonnegative() })),
+  conferences: z.array(conferenceSchema),
+})
+export type SearchResultSet = z.infer<typeof searchResultSetSchema>
+
+export const discoverTopicGroupSchema = z.object({
+  topic: topicSchema,
+  paperCount: z.number().int().nonnegative(),
+  recentPapers: z.array(publicPaperSchema),
+})
+export type DiscoverTopicGroup = z.infer<typeof discoverTopicGroupSchema>
+
+export const discoverSectionsSchema = z.object({
+  trendingTopics: z.array(discoverTopicGroupSchema),
+  activeResearchers: z.array(
+    profileSchema.extend({ recentPaperCount: z.number().int().nonnegative() }),
+  ),
+  crossDisciplinaryPicks: z.array(feedEntrySchema),
+})
+export type DiscoverSections = z.infer<typeof discoverSectionsSchema>
+
 export const updateViewerProfileInputSchema = z.object({
   headline: z.string().max(160),
   bio: z.string().max(2000),

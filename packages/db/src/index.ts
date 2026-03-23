@@ -12,6 +12,7 @@ import {
   createPaperInputSchema,
   createPeerReviewInputSchema,
   type DailyDigest,
+  type DiscoverSections,
   dailyDigestSchema,
   type FeedEntry,
   type Opportunity,
@@ -20,6 +21,7 @@ import {
   type PublicPaper,
   type RoadmapBucket,
   type SavedInterest,
+  type SearchResultSet,
   type SubmitPaperToConferenceInput,
   saveInterestInputSchema,
   slugify,
@@ -139,6 +141,8 @@ export interface PapersRepository {
   ): Promise<DemoState["peerReviews"][number]>
   getDailyDigest(viewerHandle?: string | null): Promise<DailyDigest>
   getOpportunities(viewerHandle?: string | null): Promise<Opportunity[]>
+  search(query: string, viewerHandle?: string | null): Promise<SearchResultSet>
+  getDiscoverSections(viewerHandle?: string | null): Promise<DiscoverSections>
 }
 
 async function getViewerHandle(viewerHandle?: string | null): Promise<string> {
@@ -876,6 +880,121 @@ class DemoRepository implements PapersRepository {
     return state.opportunities
       .map((opportunity) => matchOpportunity(opportunity, viewer, state))
       .sort((left, right) => right.matchReasons.length - left.matchReasons.length)
+  }
+
+  async search(query: string, viewerHandle?: string | null): Promise<SearchResultSet> {
+    const state = await readDemoState()
+    const viewer = await this.getViewer(viewerHandle)
+    const normalizedQuery = query.trim().toLowerCase()
+
+    if (!normalizedQuery) {
+      return { query, papers: [], researchers: [], topics: [], conferences: [] }
+    }
+
+    const matchedPapers = state.papers
+      .filter((paper) =>
+        `${paper.title} ${paper.abstract} ${paper.topics.map((t) => t.label).join(" ")}`
+          .toLowerCase()
+          .includes(normalizedQuery),
+      )
+      .map((paper) => scoreFeedPaper(paper, viewer, state))
+      .sort((left, right) => right.score - left.score)
+
+    const matchedResearchers = state.users
+      .filter(
+        (user) =>
+          user.profile.displayName.toLowerCase().includes(normalizedQuery) ||
+          user.profile.researchInterests.some((i) => i.toLowerCase().includes(normalizedQuery)) ||
+          (user.profile.affiliation?.toLowerCase().includes(normalizedQuery) ?? false),
+      )
+      .map((user) => user.profile)
+
+    const topicMap = new Map<string, { topic: Topic; paperCount: number }>()
+    for (const paper of state.papers) {
+      for (const topic of paper.topics) {
+        if (topic.label.toLowerCase().includes(normalizedQuery)) {
+          const existing = topicMap.get(topic.slug)
+          if (existing) {
+            existing.paperCount += 1
+          } else {
+            topicMap.set(topic.slug, { topic, paperCount: 1 })
+          }
+        }
+      }
+    }
+    const matchedTopics = [...topicMap.values()]
+      .sort((left, right) => right.paperCount - left.paperCount)
+      .map(({ topic, paperCount }) => ({ ...topic, paperCount }))
+
+    const matchedConferences = state.conferences.filter(
+      (conference) =>
+        conference.name.toLowerCase().includes(normalizedQuery) ||
+        conference.summary.toLowerCase().includes(normalizedQuery) ||
+        conference.topics.some((t) => t.label.toLowerCase().includes(normalizedQuery)),
+    )
+
+    return {
+      query,
+      papers: matchedPapers,
+      researchers: matchedResearchers,
+      topics: matchedTopics,
+      conferences: matchedConferences,
+    }
+  }
+
+  async getDiscoverSections(viewerHandle?: string | null): Promise<DiscoverSections> {
+    const state = await readDemoState()
+    const viewer = await this.getViewer(viewerHandle)
+
+    const topicMap = new Map<string, { topic: Topic; papers: Paper[] }>()
+    for (const paper of state.papers) {
+      for (const topic of paper.topics) {
+        const existing = topicMap.get(topic.slug)
+        if (existing) {
+          existing.papers.push(paper)
+        } else {
+          topicMap.set(topic.slug, { topic, papers: [paper] })
+        }
+      }
+    }
+    const trendingTopics = [...topicMap.values()]
+      .sort((left, right) => right.papers.length - left.papers.length)
+      .slice(0, 6)
+      .map(({ topic, papers: topicPapers }) => ({
+        topic,
+        paperCount: topicPapers.length,
+        recentPapers: topicPapers.slice(0, 2).map(getPublicPaper),
+      }))
+
+    const activeResearchers = state.users
+      .map((user) => {
+        const recentPaperCount = state.papers.filter(
+          (paper) => paper.ownerId === user.id && paper.visibilityMode === "public",
+        ).length
+        return { ...user.profile, recentPaperCount }
+      })
+      .sort((left, right) => right.recentPaperCount - left.recentPaperCount)
+
+    const viewerInterests = getViewerInterestLabels(viewer, state)
+    const crossDisciplinaryPicks = state.papers
+      .filter(
+        (paper) =>
+          viewerInterests.length === 0 ||
+          !paper.topics.some((topic) =>
+            viewerInterests.some((interest) =>
+              interest.toLowerCase().includes(topic.label.toLowerCase()),
+            ),
+          ),
+      )
+      .map((paper) => scoreFeedPaper(paper, viewer, state))
+      .sort((left, right) => right.score - left.score)
+      .slice(0, 3)
+
+    return {
+      trendingTopics,
+      activeResearchers,
+      crossDisciplinaryPicks,
+    }
   }
 }
 
