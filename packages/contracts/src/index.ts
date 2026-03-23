@@ -144,6 +144,45 @@ export const feedEntrySchema = z.object({
 })
 export type FeedEntry = z.infer<typeof feedEntrySchema>
 
+// ---------------------------------------------------------------------------
+// Search & Discovery
+// ---------------------------------------------------------------------------
+
+export const discoverySortModeSchema = z.enum(["relevance", "recent", "popular"])
+export type DiscoverySortMode = z.infer<typeof discoverySortModeSchema>
+
+export const searchFiltersSchema = z.object({
+  topicSlugs: z.array(z.string()).optional(),
+  visibilityMode: paperVisibilityModeSchema.optional(),
+})
+export type SearchFilters = z.infer<typeof searchFiltersSchema>
+
+export const searchQuerySchema = z.object({
+  query: z.string().max(200).optional(),
+  filters: searchFiltersSchema.optional(),
+  sort: discoverySortModeSchema.optional(),
+  limit: z.number().int().min(1).max(100).optional(),
+  offset: z.number().int().min(0).optional(),
+})
+export type SearchQuery = z.infer<typeof searchQuerySchema>
+
+export const searchResultSetSchema = z.object({
+  entries: z.array(feedEntrySchema),
+  total: z.number().int().nonnegative(),
+  appliedSort: discoverySortModeSchema,
+  availableTopics: z.array(topicSchema),
+})
+export type SearchResultSet = z.infer<typeof searchResultSetSchema>
+
+export const trendingTopicSchema = topicSchema.extend({
+  paperCount: z.number().int().nonnegative(),
+})
+export type TrendingTopic = z.infer<typeof trendingTopicSchema>
+
+// ---------------------------------------------------------------------------
+// Input schemas
+// ---------------------------------------------------------------------------
+
 export const createPaperInputSchema = z.object({
   title: z.string().min(8).max(160),
   abstract: z.string().min(40).max(4000),

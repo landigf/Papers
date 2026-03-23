@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { serializePublicPaper } from "../src/index"
+import { searchQuerySchema, serializePublicPaper } from "../src/index"
 
 describe("contracts", () => {
   it("removes the public author from blind papers", () => {
@@ -43,5 +43,26 @@ describe("contracts", () => {
     }
 
     expect(serializePublicPaper(paper).publicAuthorProfile).toBeNull()
+  })
+
+  it("validates search query with all fields", () => {
+    const result = searchQuerySchema.safeParse({
+      query: "agents",
+      filters: { topicSlugs: ["agents"], visibilityMode: "public" },
+      sort: "recent",
+      limit: 10,
+      offset: 0,
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it("validates search query with empty input", () => {
+    const result = searchQuerySchema.safeParse({})
+    expect(result.success).toBe(true)
+  })
+
+  it("rejects search query exceeding max length", () => {
+    const result = searchQuerySchema.safeParse({ query: "a".repeat(201) })
+    expect(result.success).toBe(false)
   })
 })

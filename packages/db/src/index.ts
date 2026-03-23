@@ -6,15 +6,20 @@ import {
   type CreatePaperInput,
   createCommentInputSchema,
   createPaperInputSchema,
+  type DiscoverySortMode,
   type FeedEntry,
   type Paper,
   type Profile,
   type PublicPaper,
   type RoadmapBucket,
   type SavedInterest,
+  type SearchQuery,
+  type SearchResultSet,
   saveInterestInputSchema,
+  searchQuerySchema,
   slugify,
   type Topic,
+  type TrendingTopic,
   type User,
 } from "@papers/contracts"
 import { getPublicComments, getPublicPaper, readDemoState, writeDemoState } from "./demo-store"
@@ -64,6 +69,9 @@ export interface PapersRepository {
   toggleFollow(handle: string, viewerHandle?: string | null): Promise<boolean>
   toggleStar(slug: string, viewerHandle?: string | null): Promise<boolean>
   saveInterest(label: string, viewerHandle?: string | null): Promise<SavedInterest>
+  searchPapers(query: SearchQuery, viewerHandle?: string | null): Promise<SearchResultSet>
+  getTopics(): Promise<Topic[]>
+  getTrendingTopics(limit?: number): Promise<TrendingTopic[]>
 }
 
 async function getViewerHandle(viewerHandle?: string | null): Promise<string> {
@@ -388,6 +396,100 @@ class DemoRepository implements PapersRepository {
     state.savedInterests.push(savedInterest)
     await writeDemoState(state)
     return savedInterest
+  }
+
+  async searchPapers(query: SearchQuery, viewerHandle?: string | null): Promise<SearchResultSet> {
+    const parsed = searchQuerySchema.parse(query)
+    const state = await readDemoState()
+    const viewer = await this.getViewer(viewerHandle)
+    const viewerSavedInterests = state.savedInterests.filter(
+      (interest) => interest.userId === viewer?.id,
+    )
+
+    const normalizedQuery = parsed.query?.trim().toLowerCase()
+    const sort: DiscoverySortMode = parsed.sort ?? "relevance"
+    const limit = parsed.limit ?? 20
+    const offset = parsed.offset ?? 0
+
+    // Collect all unique topics across papers for the response
+    const topicMap = new Map<string, Topic>()
+    for (const paper of state.papers) {
+      for (const topic of paper.topics) {
+        topicMap.set(topic.slug, topic)
+      }
+    }
+    const availableTopics = Array.from(topicMap.values()).sort((a, b) =>
+      a.label.localeCompare(b.label),
+    )
+
+    // Filter
+    const filtered = state.papers.filter((paper) => {
+      if (normalizedQuery) {
+        const haystack =
+          `${paper.title} ${paper.abstract} ${paper.topics.map((t) => t.label).join(" ")}`.toLowerCase()
+        if (!haystack.includes(normalizedQuery)) return false
+      }
+      if (parsed.filters?.visibilityMode && paper.visibilityMode !== parsed.filters.visibilityMode)
+        return false
+      if (parsed.filters?.topicSlugs?.length) {
+        const paperTopicSlugs = new Set(paper.topics.map((t) => t.slug))
+        if (!parsed.filters.topicSlugs.some((slug) => paperTopicSlugs.has(slug))) return false
+      }
+      return true
+    })
+
+    // Score and sort
+    const scored = filtered.map((paper) =>
+      scorePaper(paper, viewer, state.comments, viewerSavedInterests),
+    )
+
+    if (sort === "recent") {
+      scored.sort(
+        (a, b) => new Date(b.paper.createdAt).getTime() - new Date(a.paper.createdAt).getTime(),
+      )
+    } else if (sort === "popular") {
+      scored.sort(
+        (a, b) =>
+          b.paper.starCount + b.paper.commentCount - (a.paper.starCount + a.paper.commentCount),
+      )
+    } else {
+      scored.sort((a, b) => b.score - a.score)
+    }
+
+    const total = scored.length
+    const entries = scored.slice(offset, offset + limit)
+
+    return { entries, total, appliedSort: sort, availableTopics }
+  }
+
+  async getTopics(): Promise<Topic[]> {
+    const state = await readDemoState()
+    const topicMap = new Map<string, Topic>()
+    for (const paper of state.papers) {
+      for (const topic of paper.topics) {
+        topicMap.set(topic.slug, topic)
+      }
+    }
+    return Array.from(topicMap.values()).sort((a, b) => a.label.localeCompare(b.label))
+  }
+
+  async getTrendingTopics(limit = 10): Promise<TrendingTopic[]> {
+    const state = await readDemoState()
+    const counts = new Map<string, { topic: Topic; count: number }>()
+    for (const paper of state.papers) {
+      for (const topic of paper.topics) {
+        const existing = counts.get(topic.slug)
+        if (existing) {
+          existing.count += 1
+        } else {
+          counts.set(topic.slug, { topic, count: 1 })
+        }
+      }
+    }
+    return Array.from(counts.values())
+      .sort((a, b) => b.count - a.count)
+      .slice(0, limit)
+      .map(({ topic, count }) => ({ ...topic, paperCount: count }))
   }
 }
 
