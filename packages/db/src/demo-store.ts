@@ -5,6 +5,7 @@ import type {
   Comment,
   Conference,
   ConferenceSubmission,
+  ModerationFlag,
   Opportunity,
   Paper,
   PaperAsset,
@@ -24,6 +25,7 @@ export type DemoState = {
   papers: Paper[]
   comments: Comment[]
   savedInterests: SavedInterest[]
+  moderationFlags: ModerationFlag[]
   roadmap: RoadmapBucket
   conferences: Conference[]
   submissions: ConferenceSubmission[]
@@ -513,6 +515,7 @@ function createInitialState(): DemoState {
     users: [gennaro, maya, amina],
     papers: papersWithCommentCounts,
     comments,
+    moderationFlags: [],
     savedInterests: [
       {
         id: "interest_1",
@@ -592,6 +595,9 @@ export async function readDemoState(): Promise<DemoState> {
       users: Array.isArray(parsed.users) ? parsed.users : initial.users,
       papers: Array.isArray(parsed.papers) ? parsed.papers : initial.papers,
       comments: Array.isArray(parsed.comments) ? parsed.comments : initial.comments,
+      moderationFlags: Array.isArray(parsed.moderationFlags)
+        ? parsed.moderationFlags
+        : initial.moderationFlags,
       savedInterests: Array.isArray(parsed.savedInterests)
         ? parsed.savedInterests
         : initial.savedInterests,

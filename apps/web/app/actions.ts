@@ -192,6 +192,24 @@ export async function submitPaperToConferenceAction(formData: FormData) {
   redirect(`/conferences/${conferenceSlug}`)
 }
 
+export async function flagContentAction(formData: FormData) {
+  const paperId = String(formData.get("paperId") ?? "").trim() || undefined
+  const commentId = String(formData.get("commentId") ?? "").trim() || undefined
+  const reason = String(formData.get("reason") ?? "other") as
+    | "spam"
+    | "harassment"
+    | "misinformation"
+    | "identity_leak"
+    | "off_topic"
+    | "other"
+  const redirectTo = String(formData.get("redirectTo") ?? "/feed")
+
+  await repository.createModerationFlag({ paperId, commentId, reason }, await getViewerHandle())
+
+  revalidatePath(redirectTo)
+  redirect(redirectTo)
+}
+
 export async function createPeerReviewAction(formData: FormData) {
   const conferenceSlug = String(formData.get("conferenceSlug") ?? "")
   await repository.createPeerReview(

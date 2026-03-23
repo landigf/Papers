@@ -234,13 +234,19 @@ export const moderationFlags = pgTable(
   "moderation_flag",
   {
     id: text("id").primaryKey(),
+    reporterId: text("reporter_id")
+      .notNull()
+      .references(() => authUsers.id, { onDelete: "cascade" }),
     paperId: text("paper_id").references(() => papers.id, { onDelete: "cascade" }),
     commentId: text("comment_id").references(() => comments.id, { onDelete: "cascade" }),
     reason: text("reason").notNull(),
     status: text("status").notNull().default("open"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [index("moderation_flag_status_idx").on(table.status)],
+  (table) => [
+    index("moderation_flag_status_idx").on(table.status),
+    index("moderation_flag_reporter_idx").on(table.reporterId),
+  ],
 )
 
 export const conferences = pgTable(

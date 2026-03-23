@@ -127,15 +127,41 @@ export const savedInterestSchema = z.object({
 })
 export type SavedInterest = z.infer<typeof savedInterestSchema>
 
+export const moderationFlagReasonSchema = z.enum([
+  "spam",
+  "harassment",
+  "misinformation",
+  "identity_leak",
+  "off_topic",
+  "other",
+])
+export type ModerationFlagReason = z.infer<typeof moderationFlagReasonSchema>
+
+export const moderationFlagStatusSchema = z.enum(["open", "reviewing", "resolved"])
+export type ModerationFlagStatus = z.infer<typeof moderationFlagStatusSchema>
+
 export const moderationFlagSchema = z.object({
   id: z.string(),
+  reporterId: z.string(),
   paperId: z.string().nullable(),
   commentId: z.string().nullable(),
-  reason: z.string(),
-  status: z.enum(["open", "reviewing", "resolved"]),
+  reason: moderationFlagReasonSchema,
+  status: moderationFlagStatusSchema,
   createdAt: z.string(),
 })
 export type ModerationFlag = z.infer<typeof moderationFlagSchema>
+
+export const createModerationFlagInputSchema = z.object({
+  paperId: z.string().optional(),
+  commentId: z.string().optional(),
+  reason: moderationFlagReasonSchema,
+})
+export type CreateModerationFlagInput = z.infer<typeof createModerationFlagInputSchema>
+
+export const MODERATION_RATE_LIMIT = {
+  maxFlagsPerUserPerHour: 10,
+  maxFlagsPerTargetPerUser: 1,
+} as const
 
 export const feedEntrySchema = z.object({
   id: z.string(),

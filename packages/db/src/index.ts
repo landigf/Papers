@@ -5,15 +5,19 @@ import {
   type Conference,
   type ConferenceSubmission,
   type CreateCommentInput,
+  type CreateModerationFlagInput,
   type CreatePaperInput,
   type CreatePeerReviewInput,
   conferenceSubmissionSchema,
   createCommentInputSchema,
+  createModerationFlagInputSchema,
   createPaperInputSchema,
   createPeerReviewInputSchema,
   type DailyDigest,
   dailyDigestSchema,
   type FeedEntry,
+  MODERATION_RATE_LIMIT,
+  type ModerationFlag,
   type Opportunity,
   type Paper,
   type Profile,
@@ -137,6 +141,10 @@ export interface PapersRepository {
     input: CreatePeerReviewInput,
     viewerHandle?: string | null,
   ): Promise<DemoState["peerReviews"][number]>
+  createModerationFlag(
+    input: CreateModerationFlagInput,
+    viewerHandle?: string | null,
+  ): Promise<ModerationFlag>
   getDailyDigest(viewerHandle?: string | null): Promise<DailyDigest>
   getOpportunities(viewerHandle?: string | null): Promise<Opportunity[]>
 }
@@ -785,6 +793,69 @@ class DemoRepository implements PapersRepository {
     conference.reviewCount += 1
     await writeDemoState(state)
     return review
+  }
+
+  async createModerationFlag(
+    input: CreateModerationFlagInput,
+    viewerHandle?: string | null,
+  ): Promise<ModerationFlag> {
+    const parsed = createModerationFlagInputSchema.parse(input)
+    const state = await readDemoState()
+    const viewer = await this.getViewer(viewerHandle)
+
+    if (!viewer) {
+      throw new Error("A viewer is required to flag content.")
+    }
+
+    if (!parsed.paperId && !parsed.commentId) {
+      throw new Error("Either paperId or commentId is required.")
+    }
+
+    if (parsed.paperId) {
+      const paper = state.papers.find((p) => p.id === parsed.paperId || p.slug === parsed.paperId)
+      if (!paper) {
+        throw new Error("Paper not found.")
+      }
+    }
+
+    if (parsed.commentId) {
+      const comment = state.comments.find((c) => c.id === parsed.commentId)
+      if (!comment) {
+        throw new Error("Comment not found.")
+      }
+    }
+
+    const existingDuplicate = state.moderationFlags.find(
+      (flag) =>
+        flag.reporterId === viewer.id &&
+        flag.paperId === (parsed.paperId ?? null) &&
+        flag.commentId === (parsed.commentId ?? null),
+    )
+    if (existingDuplicate) {
+      throw new Error("You have already flagged this content.")
+    }
+
+    const oneHourAgo = Date.now() - 3_600_000
+    const recentFlagCount = state.moderationFlags.filter(
+      (flag) => flag.reporterId === viewer.id && new Date(flag.createdAt).getTime() > oneHourAgo,
+    ).length
+    if (recentFlagCount >= MODERATION_RATE_LIMIT.maxFlagsPerUserPerHour) {
+      throw new Error("Flag rate limit exceeded. Try again later.")
+    }
+
+    const flag: ModerationFlag = {
+      id: randomUUID(),
+      reporterId: viewer.id,
+      paperId: parsed.paperId ?? null,
+      commentId: parsed.commentId ?? null,
+      reason: parsed.reason,
+      status: "open",
+      createdAt: nowIso(),
+    }
+
+    state.moderationFlags.push(flag)
+    await writeDemoState(state)
+    return flag
   }
 
   async getDailyDigest(viewerHandle?: string | null): Promise<DailyDigest> {
