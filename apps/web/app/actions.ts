@@ -174,6 +174,29 @@ export async function updateProfileAction(formData: FormData) {
   redirect(redirectTo)
 }
 
+export async function linkOrcidAction(formData: FormData) {
+  const orcidId = String(formData.get("orcidId") ?? "").trim()
+  const viewer = await repository.linkOrcid({ orcidId }, await getViewerHandle())
+
+  revalidatePath("/")
+  revalidatePath("/feed")
+  revalidatePath(`/u/${viewer.handle}`)
+  revalidatePath("/settings/identity")
+  revalidatePath("/settings/account")
+  redirect("/settings/identity")
+}
+
+export async function unlinkOrcidAction() {
+  const viewer = await repository.unlinkOrcid(await getViewerHandle())
+
+  revalidatePath("/")
+  revalidatePath("/feed")
+  revalidatePath(`/u/${viewer.handle}`)
+  revalidatePath("/settings/identity")
+  revalidatePath("/settings/account")
+  redirect("/settings/identity")
+}
+
 export async function submitPaperToConferenceAction(formData: FormData) {
   const conferenceSlug = String(formData.get("conferenceSlug") ?? "")
   const paperSlug = String(formData.get("paperSlug") ?? "")

@@ -341,6 +341,13 @@ export const submitPaperToConferenceInputSchema = z.object({
 })
 export type SubmitPaperToConferenceInput = z.infer<typeof submitPaperToConferenceInputSchema>
 
+export const ORCID_REGEX = /^(\d{4}-){3}\d{3}[\dX]$/
+
+export const linkOrcidInputSchema = z.object({
+  orcidId: z.string().regex(ORCID_REGEX, "Must be a valid ORCID iD (e.g. 0000-0001-2345-6789)"),
+})
+export type LinkOrcidInput = z.infer<typeof linkOrcidInputSchema>
+
 export const createPeerReviewInputSchema = z.object({
   conferenceSlug: z.string().min(1),
   submissionId: z.string().min(1),

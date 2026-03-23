@@ -14,6 +14,8 @@ import {
   type DailyDigest,
   dailyDigestSchema,
   type FeedEntry,
+  type LinkOrcidInput,
+  linkOrcidInputSchema,
   type Opportunity,
   type Paper,
   type Profile,
@@ -137,6 +139,8 @@ export interface PapersRepository {
     input: CreatePeerReviewInput,
     viewerHandle?: string | null,
   ): Promise<DemoState["peerReviews"][number]>
+  linkOrcid(input: LinkOrcidInput, viewerHandle?: string | null): Promise<User>
+  unlinkOrcid(viewerHandle?: string | null): Promise<User>
   getDailyDigest(viewerHandle?: string | null): Promise<DailyDigest>
   getOpportunities(viewerHandle?: string | null): Promise<Opportunity[]>
 }
@@ -377,6 +381,64 @@ class DemoRepository implements PapersRepository {
     target.profile.bio = parsed.bio || null
     target.profile.affiliation = parsed.affiliation || null
     target.profile.researchInterests = dedupeStrings(parsed.interestLabels)
+    await writeDemoState(state)
+    return target
+  }
+
+  async linkOrcid(input: LinkOrcidInput, viewerHandle?: string | null): Promise<User> {
+    const parsed = linkOrcidInputSchema.parse(input)
+    const state = await readDemoState()
+    const viewer = await this.getViewer(viewerHandle)
+
+    if (!viewer) {
+      throw new Error("A viewer is required to link an ORCID.")
+    }
+
+    const target = state.users.find((user) => user.id === viewer.id)
+    if (!target) {
+      throw new Error("Viewer not found.")
+    }
+
+    const alreadyClaimed = state.users.find(
+      (user) => user.id !== viewer.id && user.profile.orcid === parsed.orcidId,
+    )
+    if (alreadyClaimed) {
+      throw new Error("This ORCID iD is already linked to another account.")
+    }
+
+    target.profile.orcid = parsed.orcidId
+    target.profile.isVerifiedResearcher = true
+    target.externalIdentities = target.externalIdentities.filter(
+      (identity) => identity.provider !== "orcid",
+    )
+    target.externalIdentities.push({
+      id: `ext_orcid_${target.id}`,
+      provider: "orcid",
+      providerUserId: parsed.orcidId,
+      linkedAt: nowIso(),
+    })
+    await writeDemoState(state)
+    return target
+  }
+
+  async unlinkOrcid(viewerHandle?: string | null): Promise<User> {
+    const state = await readDemoState()
+    const viewer = await this.getViewer(viewerHandle)
+
+    if (!viewer) {
+      throw new Error("A viewer is required to unlink an ORCID.")
+    }
+
+    const target = state.users.find((user) => user.id === viewer.id)
+    if (!target) {
+      throw new Error("Viewer not found.")
+    }
+
+    target.profile.orcid = null
+    target.profile.isVerifiedResearcher = false
+    target.externalIdentities = target.externalIdentities.filter(
+      (identity) => identity.provider !== "orcid",
+    )
     await writeDemoState(state)
     return target
   }
