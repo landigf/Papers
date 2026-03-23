@@ -16,11 +16,15 @@ export class GrokProvider {
     }
   }
 
-  async complete(task: ProviderTaskKind, text: string): Promise<string> {
+  async complete(
+    task: ProviderTaskKind,
+    text: string,
+    flags: { isBlindContent: boolean; containsPrivateDraft: boolean },
+  ): Promise<string> {
     this.assertSafe({
       task,
-      isBlindContent: false,
-      containsPrivateDraft: false,
+      isBlindContent: flags.isBlindContent,
+      containsPrivateDraft: flags.containsPrivateDraft,
       text,
     })
 

@@ -5,10 +5,11 @@ const provider = new GrokProvider()
 
 export const enrichPaperMetadata = task({
   id: "enrich-paper-metadata",
-  run: async (payload: { title: string; abstract: string }) => {
+  run: async (payload: { title: string; abstract: string; isBlindContent: boolean }) => {
     const tags = await provider.complete(
       "tag-extraction",
       `Title: ${payload.title}\nAbstract: ${payload.abstract}`,
+      { isBlindContent: payload.isBlindContent, containsPrivateDraft: false },
     )
 
     return {

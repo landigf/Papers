@@ -305,17 +305,39 @@ export type DailyDigest = z.infer<typeof dailyDigestSchema>
 
 export function serializePublicPaper(paper: Paper): PublicPaper {
   if (paper.visibilityMode === "blind") {
-    return {
+    const publicPaper: PublicPaper = {
       ...paper,
       ownerId: null,
       publicAuthorProfile: null,
-      comments: undefined,
-    } as PublicPaper
+      assets: paper.assets.map((asset) => ({
+        ...asset,
+        fileName: "attachment",
+      })),
+    }
+    assertBlindSafe(publicPaper)
+    return publicPaper
   }
 
   return {
     ...paper,
     ownerId: null,
+  }
+}
+
+/**
+ * Runtime invariant: a blind PublicPaper must never carry identity-revealing
+ * fields. Call this after serialization to catch regressions early.
+ */
+export function assertBlindSafe(paper: PublicPaper): void {
+  if (paper.visibilityMode !== "blind") {
+    return
+  }
+
+  if (paper.ownerId !== null) {
+    throw new Error("Blind paper leaked ownerId.")
+  }
+  if (paper.publicAuthorProfile !== null) {
+    throw new Error("Blind paper leaked publicAuthorProfile.")
   }
 }
 
