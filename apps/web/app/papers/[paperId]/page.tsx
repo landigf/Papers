@@ -1,6 +1,7 @@
 import { createRepository } from "@papers/db"
 import { ActionButton, Pill, SectionCard } from "@papers/ui"
 import { notFound } from "next/navigation"
+import { ConferenceCard } from "../../../components/conference-card"
 import { getViewerHandleFromCookies } from "../../../lib/viewer"
 import { createCommentAction, toggleStarAction } from "../../actions"
 
@@ -8,7 +9,11 @@ const repository = createRepository()
 
 export default async function PaperPage({ params }: { params: Promise<{ paperId: string }> }) {
   const { paperId } = await params
-  const detail = await repository.getPaperBySlug(paperId, await getViewerHandleFromCookies())
+  const viewerHandle = await getViewerHandleFromCookies()
+  const [detail, conferences] = await Promise.all([
+    repository.getPaperBySlug(paperId, viewerHandle),
+    repository.listConferences(),
+  ])
 
   if (!detail) {
     notFound()
@@ -74,6 +79,14 @@ export default async function PaperPage({ params }: { params: Promise<{ paperId:
                 </div>
                 <p>{comment.body}</p>
               </article>
+            ))}
+          </div>
+        </SectionCard>
+
+        <SectionCard eyebrow="Conferences" title="Where this work could get feedback next">
+          <div className="feed-stack">
+            {conferences.slice(0, 2).map((conference) => (
+              <ConferenceCard conference={conference} key={conference.id} />
             ))}
           </div>
         </SectionCard>

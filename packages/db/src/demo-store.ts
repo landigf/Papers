@@ -3,9 +3,13 @@ import path from "node:path"
 import { getPapersConfig } from "@papers/config"
 import type {
   Comment,
+  Conference,
+  ConferenceSubmission,
+  Opportunity,
   Paper,
   PaperAsset,
   PaperVersion,
+  PeerReview,
   Profile,
   PublicPaper,
   RoadmapBucket,
@@ -15,12 +19,16 @@ import type {
 } from "@papers/contracts"
 import { serializePublicPaper, slugify } from "@papers/contracts"
 
-type DemoState = {
+export type DemoState = {
   users: User[]
   papers: Paper[]
   comments: Comment[]
   savedInterests: SavedInterest[]
   roadmap: RoadmapBucket
+  conferences: Conference[]
+  submissions: ConferenceSubmission[]
+  peerReviews: PeerReview[]
+  opportunities: Opportunity[]
 }
 
 function nowIso(): string {
@@ -111,6 +119,8 @@ function createPaper(input: {
   topics: Topic[]
   createdAt?: string
   assets?: PaperAsset[]
+  starCount?: number
+  followerCount?: number
 }): Paper {
   const createdAt = input.createdAt ?? nowIso()
   const version: PaperVersion = {
@@ -135,8 +145,8 @@ function createPaper(input: {
     createdAt,
     updatedAt: createdAt,
     commentCount: 0,
-    starCount: 0,
-    followerCount: 0,
+    starCount: input.starCount ?? 0,
+    followerCount: input.followerCount ?? 0,
     isStarredByViewer: false,
     isFollowedByViewer: false,
     isSavedByViewer: false,
@@ -145,113 +155,392 @@ function createPaper(input: {
   }
 }
 
+function createConference(input: {
+  id: string
+  name: string
+  organizer: string
+  summary: string
+  callForPapers: string
+  status: Conference["status"]
+  submissionDeadline: string
+  reviewDeadline: string
+  featured?: boolean
+  topics: Topic[]
+}): Conference {
+  return {
+    id: input.id,
+    slug: slugify(input.name),
+    name: input.name,
+    organizer: input.organizer,
+    summary: input.summary,
+    callForPapers: input.callForPapers,
+    status: input.status,
+    submissionDeadline: input.submissionDeadline,
+    reviewDeadline: input.reviewDeadline,
+    featured: input.featured ?? false,
+    topics: input.topics,
+    submissionCount: 0,
+    reviewCount: 0,
+  }
+}
+
+function createOpportunity(input: {
+  id: string
+  title: string
+  organization: string
+  kind: Opportunity["kind"]
+  mode: Opportunity["mode"]
+  location: string
+  summary: string
+  topics: Topic[]
+  url?: string | null
+}): Opportunity {
+  return {
+    id: input.id,
+    title: input.title,
+    organization: input.organization,
+    kind: input.kind,
+    mode: input.mode,
+    location: input.location,
+    summary: input.summary,
+    topics: input.topics,
+    url: input.url ?? null,
+    matchReasons: [],
+  }
+}
+
 function createInitialState(): DemoState {
-  const demoUser = createUser({
+  const gennaro = createUser({
     id: "user_demo",
     email: "gennaro@papers.dev",
     name: "Gennaro Landi",
     handle: "landigf",
-    headline: "Building a place where research feels alive again.",
-    bio: "I care about open collaboration, real feedback, and not turning research into LinkedIn theater.",
+    headline: "Building infrastructure for living research instead of passive self-promotion.",
+    bio: "I care about scientific curiosity, collaboration, and making research feel active before it becomes a polished artifact.",
     affiliation: "ETH Zurich",
     interests: ["machine learning systems", "fuzzy logic", "research collaboration", "ai agents"],
     orcid: "0000-0001-2345-6789",
     verified: true,
   })
 
-  const secondUser = createUser({
+  const maya = createUser({
     id: "user_maya",
     email: "maya@papers.dev",
     name: "Maya Chen",
     handle: "maya-chen",
-    headline: "Systems researcher exploring agent reliability and evaluation.",
-    bio: "Interested in reproducibility, evals, and lightweight collaboration around evolving research ideas.",
+    headline: "Systems researcher working on evaluation, observability, and open review.",
+    bio: "Interested in reproducibility, evals, and building research tooling that helps ideas mature before a conference deadline.",
     affiliation: "MIT CSAIL",
-    interests: ["agents", "distributed systems", "evaluation"],
+    interests: ["agents", "distributed systems", "evaluation", "open review"],
+    orcid: "0000-0003-2089-1000",
+    verified: true,
   })
 
-  const topics = [
-    createTopic("research collaboration"),
-    createTopic("agents"),
-    createTopic("procurement ai"),
-    createTopic("fuzzy logic"),
-  ]
+  const amina = createUser({
+    id: "user_amina",
+    email: "amina@papers.dev",
+    name: "Amina El-Sayed",
+    handle: "amina-labs",
+    headline: "Working where computational biology, optimization, and collaboration design meet.",
+    bio: "I look for research spaces where mixed backgrounds generate stronger questions than narrow specialization alone.",
+    affiliation: "EPFL",
+    interests: ["computational biology", "optimization", "scientific discovery", "collaboration"],
+  })
+
+  const topics = {
+    researchCollaboration: createTopic("research collaboration"),
+    agents: createTopic("agents"),
+    fuzzyLogic: createTopic("fuzzy logic"),
+    evaluation: createTopic("evaluation"),
+    openReview: createTopic("open review"),
+    computationalBiology: createTopic("computational biology"),
+    scientificDiscovery: createTopic("scientific discovery"),
+    procurementAi: createTopic("procurement ai"),
+  }
 
   const papers = [
     createPaper({
       id: "paper_public_1",
-      owner: demoUser,
+      owner: gennaro,
       title: "Research Should Feel Collaborative Before It Feels Official",
       abstract:
-        "A product note on why paper sharing, open problem framing, and interest-driven discovery should exist outside institutional marketing channels.",
+        "A product note on why paper sharing, open problem framing, conferences, and interest-driven discovery should exist outside institutional marketing channels.",
       bodyMarkdown:
-        "## Why this exists\n\nResearch collaboration still happens in fragmented places. Papers starts with a feed, public posts, and discussion, but the real goal is a living research graph around ideas and people.",
+        "## Why this exists\n\nResearch collaboration still happens in fragmented places. Papers starts with a feed, paper-first publishing, conferences, and discussion, but the real goal is a living research graph around ideas, people, and opportunities.",
       visibilityMode: "public",
-      topics: [topics[0], topics[1]],
+      topics: [topics.researchCollaboration, topics.agents, topics.scientificDiscovery],
       createdAt: "2026-03-23T09:00:00.000Z",
+      starCount: 7,
+      followerCount: 4,
+    }),
+    createPaper({
+      id: "paper_public_2",
+      owner: maya,
+      title: "Evaluation Traces for Agentic Systems Without Turning Reviews Into Guesswork",
+      abstract:
+        "A systems note on using structured traces, validation passes, and review metadata to make research agents easier to compare and debug.",
+      bodyMarkdown:
+        "## Structured review\n\nIf research systems are going to improve, we need public artifacts that survive beyond a demo. This note proposes structured reviews, explainable traces, and explicit reviewer confidence.",
+      visibilityMode: "public",
+      topics: [topics.agents, topics.evaluation, topics.openReview],
+      createdAt: "2026-03-23T07:30:00.000Z",
+      starCount: 9,
+      followerCount: 5,
+    }),
+    createPaper({
+      id: "paper_public_3",
+      owner: amina,
+      title: "Cross-Disciplinary Discovery Needs More Than Following Your Existing Interests",
+      abstract:
+        "A note on why recommendation systems for researchers should preserve serendipity and cross-domain exposure instead of collapsing everyone into narrow taste bubbles.",
+      bodyMarkdown:
+        "## Discovery outside your lane\n\nBreakthroughs often happen where fields overlap. Papers should learn what matters to you without sealing you into your current graph.",
+      visibilityMode: "public",
+      topics: [
+        topics.scientificDiscovery,
+        topics.computationalBiology,
+        topics.researchCollaboration,
+      ],
+      createdAt: "2026-03-22T15:10:00.000Z",
+      starCount: 5,
+      followerCount: 3,
     }),
     createPaper({
       id: "paper_blind_1",
-      owner: secondUser,
+      owner: maya,
       title: "Blind Submission Demo: Agent Evaluation Without Identity Leakage",
       abstract:
-        "A blind-mode post showing how the product preserves internal ownership while hiding public identity across feed cards, paper pages, and comments.",
+        "A blind-mode post showing how the product preserves internal ownership while hiding public identity across feed cards, paper pages, conference entries, and comments.",
       bodyMarkdown:
         "## Blind mode\n\nThis post demonstrates the safety boundary. The public page cannot reveal the author, their profile, or linked ORCID identity.",
       visibilityMode: "blind",
-      topics: [topics[1], topics[3]],
+      topics: [topics.agents, topics.fuzzyLogic, topics.openReview],
       createdAt: "2026-03-22T18:30:00.000Z",
+      starCount: 3,
+      followerCount: 0,
     }),
   ]
+
+  function requirePaper(id: string): Paper {
+    const paper = papers.find((entry) => entry.id === id)
+    if (!paper) {
+      throw new Error(`Missing demo paper: ${id}`)
+    }
+    return paper
+  }
 
   const comments: Comment[] = [
     {
       id: "comment_1",
       paperId: "paper_public_1",
-      authorProfile: secondUser.profile,
-      body: "The part about discovery matching feels strong. The next unlock is exposing open problems and collaborator intent directly on the paper.",
+      authorProfile: maya.profile,
+      body: "The collaboration angle is strong. The next unlock is letting people publish open problems and reviewer-ready drafts in the same place.",
       createdAt: "2026-03-23T10:15:00.000Z",
       isBlindSafe: true,
     },
     {
       id: "comment_2",
+      paperId: "paper_public_2",
+      authorProfile: gennaro.profile,
+      body: "Reviewer confidence plus trace visibility would already make conference feedback feel much less random.",
+      createdAt: "2026-03-23T10:48:00.000Z",
+      isBlindSafe: true,
+    },
+    {
+      id: "comment_3",
       paperId: "paper_blind_1",
       authorProfile: null,
-      body: "Blind-safe comment rendering is working here: no author identity is visible on the public page.",
+      body: "Blind-safe comment rendering is working here: no author identity is visible on the public page or conference workflow.",
       createdAt: "2026-03-23T11:00:00.000Z",
       isBlindSafe: true,
     },
   ]
 
+  const conferences = [
+    createConference({
+      id: "conf_open_1",
+      name: "Open Systems for Science 2026",
+      organizer: "Papers Research Collective",
+      summary:
+        "A conference track for research infrastructure, collaboration tooling, and open review systems that speed up real scientific work.",
+      callForPapers:
+        "Submit working papers, open problem statements, or infrastructure notes that improve how research is shared, reviewed, or reproduced.",
+      status: "open",
+      submissionDeadline: "2026-04-05T23:59:00.000Z",
+      reviewDeadline: "2026-04-20T23:59:00.000Z",
+      featured: true,
+      topics: [topics.researchCollaboration, topics.openReview, topics.scientificDiscovery],
+    }),
+    createConference({
+      id: "conf_review_1",
+      name: "Blind Review Challenge 2026",
+      organizer: "Papers x OpenReview Guild",
+      summary:
+        "A double-blind-friendly challenge focused on review quality, anonymity safety, and evaluation clarity.",
+      callForPapers:
+        "Submit blind papers and review them with explicit score, confidence, strengths, and concerns.",
+      status: "reviewing",
+      submissionDeadline: "2026-03-15T23:59:00.000Z",
+      reviewDeadline: "2026-03-30T23:59:00.000Z",
+      topics: [topics.openReview, topics.agents, topics.evaluation],
+    }),
+  ]
+
+  const submissions: ConferenceSubmission[] = [
+    {
+      id: "submission_public_1",
+      conferenceId: "conf_open_1",
+      paperId: "paper_public_1",
+      paper: getPublicPaper(requirePaper("paper_public_1")),
+      status: "submitted",
+      submittedAt: "2026-03-23T12:10:00.000Z",
+      reviewCount: 0,
+      averageScore: null,
+    },
+    {
+      id: "submission_blind_1",
+      conferenceId: "conf_review_1",
+      paperId: "paper_blind_1",
+      paper: getPublicPaper(requirePaper("paper_blind_1")),
+      status: "under_review",
+      submittedAt: "2026-03-20T09:30:00.000Z",
+      reviewCount: 1,
+      averageScore: 4,
+    },
+    {
+      id: "submission_public_2",
+      conferenceId: "conf_review_1",
+      paperId: "paper_public_2",
+      paper: getPublicPaper(requirePaper("paper_public_2")),
+      status: "under_review",
+      submittedAt: "2026-03-19T16:20:00.000Z",
+      reviewCount: 1,
+      averageScore: 5,
+    },
+  ]
+
+  const peerReviews: PeerReview[] = [
+    {
+      id: "review_1",
+      conferenceId: "conf_review_1",
+      submissionId: "submission_blind_1",
+      reviewerProfile: gennaro.profile,
+      score: 4,
+      confidence: 4,
+      summary:
+        "Clear contribution and a strong blind-safety demonstration. The next revision should expose more evaluation detail around reviewer workflows.",
+      strengths:
+        "The paper makes the anonymity boundary tangible and gives a concrete product framing for review quality.",
+      concerns:
+        "It would benefit from a deeper comparison between reviewer transparency and blind preservation in mixed review settings.",
+      recommendation: "weak_accept",
+      createdAt: "2026-03-22T21:10:00.000Z",
+    },
+    {
+      id: "review_2",
+      conferenceId: "conf_review_1",
+      submissionId: "submission_public_2",
+      reviewerProfile: amina.profile,
+      score: 5,
+      confidence: 4,
+      summary:
+        "Strong systems framing and reviewer confidence modeling. This feels directly useful for both conference review and agent evaluation.",
+      strengths:
+        "Explicit trace structure, clear use case, and a concrete mechanism for improving review quality.",
+      concerns:
+        "Would still need user studies or comparative evidence before a full conference-ready version.",
+      recommendation: "accept",
+      createdAt: "2026-03-22T22:40:00.000Z",
+    },
+  ]
+
+  const opportunities = [
+    createOpportunity({
+      id: "opp_1",
+      title: "Remote visiting student on agent reliability",
+      organization: "MIT CSAIL",
+      kind: "visiting_student",
+      mode: "remote",
+      location: "Cambridge / remote",
+      summary:
+        "A part-time visiting-student style collaboration around agent reliability, eval traces, and reproducible research tooling.",
+      topics: [topics.agents, topics.evaluation, topics.researchCollaboration],
+      url: "https://example.org/opportunities/mit-agent-reliability",
+    }),
+    createOpportunity({
+      id: "opp_2",
+      title: "Cross-domain collaboration call on fuzzy decision systems",
+      organization: "ETH Zurich x Industrial Partners",
+      kind: "collaboration",
+      mode: "hybrid",
+      location: "Zurich",
+      summary:
+        "Looking for researchers who can connect fuzzy decision models, procurement workflows, and interpretable recommendation systems.",
+      topics: [topics.fuzzyLogic, topics.procurementAi, topics.scientificDiscovery],
+      url: "https://example.org/opportunities/fuzzy-systems-call",
+    }),
+    createOpportunity({
+      id: "opp_3",
+      title: "Interdisciplinary biology + systems internship",
+      organization: "EPFL",
+      kind: "internship",
+      mode: "onsite",
+      location: "Lausanne",
+      summary:
+        "A summer internship exploring discovery tooling for cross-disciplinary research teams in biology and AI systems.",
+      topics: [
+        topics.computationalBiology,
+        topics.scientificDiscovery,
+        topics.researchCollaboration,
+      ],
+      url: "https://example.org/opportunities/epfl-bio-systems",
+    }),
+  ]
+
+  const papersWithCommentCounts = papers.map((paper) => ({
+    ...paper,
+    commentCount: comments.filter((comment) => comment.paperId === paper.id).length,
+  }))
+
+  const conferencesWithCounts = conferences.map((conference) => ({
+    ...conference,
+    submissionCount: submissions.filter((submission) => submission.conferenceId === conference.id)
+      .length,
+    reviewCount: peerReviews.filter((review) => review.conferenceId === conference.id).length,
+  }))
+
   return {
-    users: [demoUser, secondUser],
-    papers: papers.map((paper) => ({
-      ...paper,
-      commentCount: comments.filter((comment) => comment.paperId === paper.id).length,
-    })),
+    users: [gennaro, maya, amina],
+    papers: papersWithCommentCounts,
     comments,
     savedInterests: [
       {
         id: "interest_1",
-        userId: demoUser.id,
+        userId: gennaro.id,
         label: "agent evaluation",
         createdAt: nowIso(),
       },
       {
         id: "interest_2",
-        userId: demoUser.id,
+        userId: gennaro.id,
         label: "scientific collaboration",
+        createdAt: nowIso(),
+      },
+      {
+        id: "interest_3",
+        userId: gennaro.id,
+        label: "fuzzy logic",
         createdAt: nowIso(),
       },
     ],
     roadmap: {
       now: [
-        "Repo bootstrap, auth/profile, paper post model, and the first feed shell.",
-        "Deterministic ranking from follows, topics, and social actions.",
+        "Web-first publishing, feed, profile, conference, and digest flows.",
+        "Deterministic ranking from interests, trends, active discussion, and peer review context.",
       ],
       tonight: [
-        "ORCID linking and blind-mode enforcement.",
-        "Comments, search, and discovery skeleton.",
+        "ORCID linking, blind-mode upload hardening, and richer discovery explanations.",
+        "Newsletter automation, research opportunities, and conference review loops.",
       ],
       needsDecision: [
         "Moderation escalation policy for abuse, impersonation, and blind submission leaks.",
@@ -260,7 +549,7 @@ function createInitialState(): DemoState {
         {
           id: "idea_groups",
           label: "Research groups",
-          summary: "Private and public research circles around labs, interests, or paper threads.",
+          summary: "Private and public circles around labs, interests, or conference tracks.",
         },
         {
           id: "idea_dm",
@@ -279,6 +568,10 @@ function createInitialState(): DemoState {
         },
       ],
     },
+    conferences: conferencesWithCounts,
+    submissions,
+    peerReviews,
+    opportunities,
   }
 }
 
@@ -293,7 +586,32 @@ export async function readDemoState(): Promise<DemoState> {
 
   try {
     const raw = await readFile(filePath, "utf8")
-    return JSON.parse(raw) as DemoState
+    const parsed = JSON.parse(raw) as Partial<DemoState>
+    const initial = createInitialState()
+    const normalized: DemoState = {
+      users: Array.isArray(parsed.users) ? parsed.users : initial.users,
+      papers: Array.isArray(parsed.papers) ? parsed.papers : initial.papers,
+      comments: Array.isArray(parsed.comments) ? parsed.comments : initial.comments,
+      savedInterests: Array.isArray(parsed.savedInterests)
+        ? parsed.savedInterests
+        : initial.savedInterests,
+      roadmap:
+        parsed.roadmap &&
+        Array.isArray(parsed.roadmap.now) &&
+        Array.isArray(parsed.roadmap.tonight) &&
+        Array.isArray(parsed.roadmap.needsDecision) &&
+        Array.isArray(parsed.roadmap.proposedByJarvis)
+          ? parsed.roadmap
+          : initial.roadmap,
+      conferences: Array.isArray(parsed.conferences) ? parsed.conferences : initial.conferences,
+      submissions: Array.isArray(parsed.submissions) ? parsed.submissions : initial.submissions,
+      peerReviews: Array.isArray(parsed.peerReviews) ? parsed.peerReviews : initial.peerReviews,
+      opportunities: Array.isArray(parsed.opportunities)
+        ? parsed.opportunities
+        : initial.opportunities,
+    }
+    await writeFile(filePath, JSON.stringify(normalized, null, 2))
+    return normalized
   } catch {
     const initial = createInitialState()
     await writeFile(filePath, JSON.stringify(initial, null, 2))

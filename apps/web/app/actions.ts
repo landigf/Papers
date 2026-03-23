@@ -42,6 +42,11 @@ export async function demoSignUpAction(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim()
   const email = String(formData.get("email") ?? "").trim()
   const handle = String(formData.get("handle") ?? "").trim()
+  const affiliation = String(formData.get("affiliation") ?? "").trim()
+  const interestLabels = String(formData.get("interestLabels") ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean)
 
   if (!name || !email || !handle) {
     redirect("/sign-up")
@@ -51,6 +56,8 @@ export async function demoSignUpAction(formData: FormData) {
     name,
     email,
     handle,
+    affiliation,
+    interestLabels,
   })
 
   const store = await cookies()
@@ -88,6 +95,8 @@ export async function createPaperAction(formData: FormData) {
 
   revalidatePath("/")
   revalidatePath("/feed")
+  revalidatePath("/digest")
+  revalidatePath("/conferences")
   redirect(`/papers/${paper.slug}`)
 }
 
@@ -103,6 +112,8 @@ export async function createCommentAction(formData: FormData) {
   )
 
   revalidatePath(`/papers/${paperId}`)
+  revalidatePath("/feed")
+  revalidatePath("/digest")
   redirect(`/papers/${paperId}`)
 }
 
@@ -111,6 +122,8 @@ export async function toggleFollowAction(formData: FormData) {
   await repository.toggleFollow(handle, await getViewerHandle())
   revalidatePath(`/u/${handle}`)
   revalidatePath("/feed")
+  revalidatePath("/")
+  revalidatePath("/digest")
   redirect(`/u/${handle}`)
 }
 
@@ -118,14 +131,89 @@ export async function toggleStarAction(formData: FormData) {
   const paperSlug = String(formData.get("paperSlug") ?? "")
   await repository.toggleStar(paperSlug, await getViewerHandle())
   revalidatePath("/feed")
+  revalidatePath("/")
+  revalidatePath("/digest")
   revalidatePath(`/papers/${paperSlug}`)
   redirect(`/papers/${paperSlug}`)
 }
 
 export async function saveInterestAction(formData: FormData) {
   const label = String(formData.get("label") ?? "")
+  const redirectTo = String(formData.get("redirectTo") ?? "/feed")
   await repository.saveInterest(label, await getViewerHandle())
   revalidatePath("/")
   revalidatePath("/feed")
-  redirect("/feed")
+  revalidatePath("/digest")
+  revalidatePath("/opportunities")
+  redirect(redirectTo)
+}
+
+export async function updateProfileAction(formData: FormData) {
+  const redirectTo = String(formData.get("redirectTo") ?? "/settings/account")
+  const interestLabels = String(formData.get("interestLabels") ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean)
+
+  const viewer = await repository.updateViewerProfile(
+    {
+      headline: String(formData.get("headline") ?? "").trim(),
+      bio: String(formData.get("bio") ?? "").trim(),
+      affiliation: String(formData.get("affiliation") ?? "").trim(),
+      interestLabels,
+    },
+    await getViewerHandle(),
+  )
+
+  revalidatePath("/")
+  revalidatePath("/feed")
+  revalidatePath("/digest")
+  revalidatePath("/opportunities")
+  revalidatePath(`/u/${viewer.handle}`)
+  revalidatePath("/settings/account")
+  redirect(redirectTo)
+}
+
+export async function submitPaperToConferenceAction(formData: FormData) {
+  const conferenceSlug = String(formData.get("conferenceSlug") ?? "")
+  const paperSlug = String(formData.get("paperSlug") ?? "")
+  await repository.submitPaperToConference(
+    {
+      conferenceSlug,
+      paperSlug,
+    },
+    await getViewerHandle(),
+  )
+
+  revalidatePath("/conferences")
+  revalidatePath(`/conferences/${conferenceSlug}`)
+  revalidatePath(`/papers/${paperSlug}`)
+  revalidatePath("/digest")
+  redirect(`/conferences/${conferenceSlug}`)
+}
+
+export async function createPeerReviewAction(formData: FormData) {
+  const conferenceSlug = String(formData.get("conferenceSlug") ?? "")
+  await repository.createPeerReview(
+    {
+      conferenceSlug,
+      submissionId: String(formData.get("submissionId") ?? ""),
+      score: Number(formData.get("score") ?? 0),
+      confidence: Number(formData.get("confidence") ?? 0),
+      summary: String(formData.get("summary") ?? "").trim(),
+      strengths: String(formData.get("strengths") ?? "").trim(),
+      concerns: String(formData.get("concerns") ?? "").trim(),
+      recommendation: String(formData.get("recommendation") ?? "borderline") as
+        | "accept"
+        | "weak_accept"
+        | "borderline"
+        | "weak_reject"
+        | "reject",
+    },
+    await getViewerHandle(),
+  )
+
+  revalidatePath(`/conferences/${conferenceSlug}`)
+  revalidatePath("/digest")
+  redirect(`/conferences/${conferenceSlug}`)
 }

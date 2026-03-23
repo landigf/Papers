@@ -1,6 +1,8 @@
 import { createRepository } from "@papers/db"
 import { SectionCard } from "@papers/ui"
+import { ConferenceCard } from "../../components/conference-card"
 import { FeedCard } from "../../components/feed-card"
+import { OpportunityCard } from "../../components/opportunity-card"
 import { getViewerHandleFromCookies } from "../../lib/viewer"
 
 const repository = createRepository()
@@ -12,10 +14,18 @@ export default async function FeedPage({
 }) {
   const params = await searchParams
   const viewerHandle = await getViewerHandleFromCookies()
-  const feed = await repository.getFeed({
-    viewerHandle,
-    query: params.q,
-  })
+  const [feed, trending, conferences, opportunities] = await Promise.all([
+    repository.getFeed({
+      viewerHandle,
+      query: params.q,
+    }),
+    repository.listTrendingPapers({
+      viewerHandle,
+      limit: 3,
+    }),
+    repository.listConferences(),
+    repository.getOpportunities(viewerHandle),
+  ])
 
   return (
     <div className="content-columns">
@@ -36,6 +46,29 @@ export default async function FeedPage({
           </div>
         </SectionCard>
       </div>
+      <aside className="content-side">
+        <SectionCard eyebrow="Trending" title="Momentum right now">
+          <div className="feed-stack">
+            {trending.map((entry) => (
+              <FeedCard entry={entry} key={entry.id} />
+            ))}
+          </div>
+        </SectionCard>
+        <SectionCard eyebrow="Conferences" title="Where feedback is happening">
+          <div className="feed-stack">
+            {conferences.slice(0, 2).map((conference) => (
+              <ConferenceCard conference={conference} key={conference.id} />
+            ))}
+          </div>
+        </SectionCard>
+        <SectionCard eyebrow="Opportunities" title="Keep some serendipity">
+          <div className="feed-stack">
+            {opportunities.slice(0, 2).map((opportunity) => (
+              <OpportunityCard key={opportunity.id} opportunity={opportunity} />
+            ))}
+          </div>
+        </SectionCard>
+      </aside>
     </div>
   )
 }

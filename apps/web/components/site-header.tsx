@@ -21,6 +21,9 @@ export function SiteHeader({
       </div>
       <nav className="site-nav">
         <Link href="/feed">Feed</Link>
+        <Link href="/conferences">Conferences</Link>
+        <Link href="/digest">Digest</Link>
+        <Link href="/opportunities">Opportunities</Link>
         <Link href="/papers/new">New post</Link>
         {viewer ? <Link href={`/u/${viewer.handle}`}>Profile</Link> : null}
         <Link href="/settings/account">Account</Link>

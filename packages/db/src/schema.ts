@@ -242,3 +242,97 @@ export const moderationFlags = pgTable(
   },
   (table) => [index("moderation_flag_status_idx").on(table.status)],
 )
+
+export const conferences = pgTable(
+  "conference",
+  {
+    id: text("id").primaryKey(),
+    slug: text("slug").notNull(),
+    name: text("name").notNull(),
+    organizer: text("organizer").notNull(),
+    summary: text("summary").notNull(),
+    callForPapers: text("call_for_papers").notNull(),
+    status: text("status").notNull(),
+    submissionDeadline: timestamp("submission_deadline", { withTimezone: true }).notNull(),
+    reviewDeadline: timestamp("review_deadline", { withTimezone: true }).notNull(),
+    featured: boolean("featured").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex("conference_slug_idx").on(table.slug)],
+)
+
+export const conferenceTopics = pgTable(
+  "conference_topic",
+  {
+    conferenceId: text("conference_id")
+      .notNull()
+      .references(() => conferences.id, { onDelete: "cascade" }),
+    topicId: text("topic_id")
+      .notNull()
+      .references(() => topics.id, { onDelete: "cascade" }),
+  },
+  (table) => [primaryKey({ columns: [table.conferenceId, table.topicId] })],
+)
+
+export const conferenceSubmissions = pgTable(
+  "conference_submission",
+  {
+    id: text("id").primaryKey(),
+    conferenceId: text("conference_id")
+      .notNull()
+      .references(() => conferences.id, { onDelete: "cascade" }),
+    paperId: text("paper_id")
+      .notNull()
+      .references(() => papers.id, { onDelete: "cascade" }),
+    submitterId: text("submitter_id")
+      .notNull()
+      .references(() => authUsers.id, { onDelete: "cascade" }),
+    status: text("status").notNull().default("submitted"),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("conference_submission_unique_idx").on(table.conferenceId, table.paperId),
+    index("conference_submission_conference_idx").on(table.conferenceId),
+  ],
+)
+
+export const peerReviews = pgTable(
+  "peer_review",
+  {
+    id: text("id").primaryKey(),
+    conferenceId: text("conference_id")
+      .notNull()
+      .references(() => conferences.id, { onDelete: "cascade" }),
+    submissionId: text("submission_id")
+      .notNull()
+      .references(() => conferenceSubmissions.id, { onDelete: "cascade" }),
+    reviewerId: text("reviewer_id")
+      .notNull()
+      .references(() => authUsers.id, { onDelete: "cascade" }),
+    score: integer("score").notNull(),
+    confidence: integer("confidence").notNull(),
+    summary: text("summary").notNull(),
+    strengths: text("strengths").notNull(),
+    concerns: text("concerns").notNull(),
+    recommendation: text("recommendation").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("peer_review_submission_idx").on(table.submissionId)],
+)
+
+export const researchOpportunities = pgTable(
+  "research_opportunity",
+  {
+    id: text("id").primaryKey(),
+    title: text("title").notNull(),
+    organization: text("organization").notNull(),
+    kind: text("kind").notNull(),
+    mode: text("mode").notNull(),
+    location: text("location").notNull(),
+    summary: text("summary").notNull(),
+    url: text("url"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("research_opportunity_kind_idx").on(table.kind)],
+)

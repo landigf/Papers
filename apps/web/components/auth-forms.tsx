@@ -31,6 +31,14 @@ export function SignUpForm() {
           Handle
           <input name="handle" placeholder="landigf" required />
         </label>
+        <label>
+          Affiliation
+          <input name="affiliation" placeholder="ETH Zurich" />
+        </label>
+        <label>
+          Research interests
+          <input name="interestLabels" placeholder="agent evaluation, open review, fuzzy logic" />
+        </label>
         <ActionButton type="submit">Create account</ActionButton>
       </form>
     </SectionCard>

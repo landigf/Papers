@@ -2,6 +2,7 @@ import { SectionCard } from "@papers/ui"
 import Link from "next/link"
 import { SignOutButton } from "../../../components/auth-forms"
 import { getSessionContext } from "../../../lib/viewer"
+import { updateProfileAction } from "../../actions"
 
 export default async function AccountSettingsPage() {
   const session = await getSessionContext()
@@ -20,6 +21,45 @@ export default async function AccountSettingsPage() {
                 Current mode: {session.authMode}. Managed auth activates automatically when the real
                 auth stack is configured.
               </p>
+              <form action={updateProfileAction} className="stacked-form">
+                <input name="redirectTo" type="hidden" value="/settings/account" />
+                <label>
+                  Headline
+                  <input
+                    defaultValue={session.viewer.profile.headline ?? ""}
+                    name="headline"
+                    placeholder="Building infrastructure for living research"
+                  />
+                </label>
+                <label>
+                  Bio
+                  <textarea
+                    defaultValue={session.viewer.profile.bio ?? ""}
+                    name="bio"
+                    placeholder="What are you trying to understand, build, or collaborate on?"
+                    rows={5}
+                  />
+                </label>
+                <label>
+                  Affiliation
+                  <input
+                    defaultValue={session.viewer.profile.affiliation ?? ""}
+                    name="affiliation"
+                    placeholder="ETH Zurich"
+                  />
+                </label>
+                <label>
+                  Research interests
+                  <input
+                    defaultValue={session.viewer.profile.researchInterests.join(", ")}
+                    name="interestLabels"
+                    placeholder="agents, open review, fuzzy logic"
+                  />
+                </label>
+                <button className="secondary-link" type="submit">
+                  Update profile
+                </button>
+              </form>
               <SignOutButton />
             </>
           ) : (

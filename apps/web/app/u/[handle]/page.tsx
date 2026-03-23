@@ -1,6 +1,7 @@
 import { createRepository } from "@papers/db"
-import { ActionButton, SectionCard } from "@papers/ui"
+import { ActionButton, Pill, SectionCard } from "@papers/ui"
 import { notFound } from "next/navigation"
+import { OpportunityCard } from "../../../components/opportunity-card"
 import { getViewerHandleFromCookies } from "../../../lib/viewer"
 import { toggleFollowAction } from "../../actions"
 
@@ -8,7 +9,11 @@ const repository = createRepository()
 
 export default async function ProfilePage({ params }: { params: Promise<{ handle: string }> }) {
   const { handle } = await params
-  const detail = await repository.getProfileByHandle(handle, await getViewerHandleFromCookies())
+  const viewerHandle = await getViewerHandleFromCookies()
+  const [detail, opportunities] = await Promise.all([
+    repository.getProfileByHandle(handle, viewerHandle),
+    repository.getOpportunities(viewerHandle),
+  ])
 
   if (!detail) {
     notFound()
@@ -34,6 +39,11 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
               <dd>{detail.profile.orcid ?? "Not linked"}</dd>
             </div>
           </dl>
+          <div className="pill-row">
+            {detail.profile.researchInterests.map((interest) => (
+              <Pill key={interest}>{interest}</Pill>
+            ))}
+          </div>
           <form action={toggleFollowAction}>
             <input name="handle" type="hidden" value={detail.profile.handle} />
             <ActionButton type="submit">
@@ -49,6 +59,14 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
                 <strong>{paper.title}</strong>
                 <span>{paper.abstract}</span>
               </a>
+            ))}
+          </div>
+        </SectionCard>
+
+        <SectionCard eyebrow="Opportunity matches" title="Where this researcher could fit next">
+          <div className="feed-stack">
+            {opportunities.slice(0, 2).map((opportunity) => (
+              <OpportunityCard key={opportunity.id} opportunity={opportunity} />
             ))}
           </div>
         </SectionCard>

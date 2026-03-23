@@ -88,6 +88,7 @@ export const paperSchema = z.object({
 export type Paper = z.infer<typeof paperSchema>
 
 export const publicPaperSchema = paperSchema.extend({
+  ownerId: z.string().nullable(),
   publicAuthorProfile: profileSchema.nullable(),
 })
 export type PublicPaper = z.infer<typeof publicPaperSchema>
@@ -195,16 +196,127 @@ export const roadmapBucketSchema = z.object({
 })
 export type RoadmapBucket = z.infer<typeof roadmapBucketSchema>
 
+export const conferenceStatusSchema = z.enum(["open", "reviewing", "closed"])
+export type ConferenceStatus = z.infer<typeof conferenceStatusSchema>
+
+export const submissionStatusSchema = z.enum([
+  "submitted",
+  "under_review",
+  "accepted",
+  "waitlist",
+  "rejected",
+])
+export type SubmissionStatus = z.infer<typeof submissionStatusSchema>
+
+export const reviewRecommendationSchema = z.enum([
+  "accept",
+  "weak_accept",
+  "borderline",
+  "weak_reject",
+  "reject",
+])
+export type ReviewRecommendation = z.infer<typeof reviewRecommendationSchema>
+
+export const conferenceSchema = z.object({
+  id: z.string(),
+  slug: z.string(),
+  name: z.string(),
+  organizer: z.string(),
+  summary: z.string(),
+  callForPapers: z.string(),
+  status: conferenceStatusSchema,
+  submissionDeadline: z.string(),
+  reviewDeadline: z.string(),
+  featured: z.boolean(),
+  topics: z.array(topicSchema),
+  submissionCount: z.number().int().nonnegative(),
+  reviewCount: z.number().int().nonnegative(),
+})
+export type Conference = z.infer<typeof conferenceSchema>
+
+export const conferenceSubmissionSchema = z.object({
+  id: z.string(),
+  conferenceId: z.string(),
+  paperId: z.string(),
+  paper: publicPaperSchema,
+  status: submissionStatusSchema,
+  submittedAt: z.string(),
+  reviewCount: z.number().int().nonnegative(),
+  averageScore: z.number().nullable(),
+})
+export type ConferenceSubmission = z.infer<typeof conferenceSubmissionSchema>
+
+export const peerReviewSchema = z.object({
+  id: z.string(),
+  conferenceId: z.string(),
+  submissionId: z.string(),
+  reviewerProfile: profileSchema.nullable(),
+  score: z.number().int().min(1).max(5),
+  confidence: z.number().int().min(1).max(5),
+  summary: z.string(),
+  strengths: z.string(),
+  concerns: z.string(),
+  recommendation: reviewRecommendationSchema,
+  createdAt: z.string(),
+})
+export type PeerReview = z.infer<typeof peerReviewSchema>
+
+export const opportunityKindSchema = z.enum([
+  "visiting_student",
+  "internship",
+  "collaboration",
+  "call_for_papers",
+])
+export type OpportunityKind = z.infer<typeof opportunityKindSchema>
+
+export const opportunityModeSchema = z.enum(["remote", "onsite", "hybrid"])
+export type OpportunityMode = z.infer<typeof opportunityModeSchema>
+
+export const opportunitySchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  organization: z.string(),
+  kind: opportunityKindSchema,
+  mode: opportunityModeSchema,
+  location: z.string(),
+  summary: z.string(),
+  topics: z.array(topicSchema),
+  url: z.string().nullable(),
+  matchReasons: z.array(z.string()),
+})
+export type Opportunity = z.infer<typeof opportunitySchema>
+
+export const dailyDigestSectionSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  summary: z.string(),
+  items: z.array(z.string()),
+})
+export type DailyDigestSection = z.infer<typeof dailyDigestSectionSchema>
+
+export const dailyDigestSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  intro: z.string(),
+  generatedAt: z.string(),
+  sections: z.array(dailyDigestSectionSchema),
+})
+export type DailyDigest = z.infer<typeof dailyDigestSchema>
+
 export function serializePublicPaper(paper: Paper): PublicPaper {
   if (paper.visibilityMode === "blind") {
     return {
       ...paper,
+      ownerId: null,
       publicAuthorProfile: null,
       comments: undefined,
     } as PublicPaper
   }
 
-  return paper
+  return {
+    ...paper,
+    ownerId: null,
+  }
 }
 
 export function slugify(value: string): string {
@@ -214,3 +326,29 @@ export function slugify(value: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
 }
+
+export const updateViewerProfileInputSchema = z.object({
+  headline: z.string().max(160),
+  bio: z.string().max(2000),
+  affiliation: z.string().max(160),
+  interestLabels: z.array(z.string().min(2).max(80)).max(12),
+})
+export type UpdateViewerProfileInput = z.infer<typeof updateViewerProfileInputSchema>
+
+export const submitPaperToConferenceInputSchema = z.object({
+  conferenceSlug: z.string().min(1),
+  paperSlug: z.string().min(1),
+})
+export type SubmitPaperToConferenceInput = z.infer<typeof submitPaperToConferenceInputSchema>
+
+export const createPeerReviewInputSchema = z.object({
+  conferenceSlug: z.string().min(1),
+  submissionId: z.string().min(1),
+  score: z.number().int().min(1).max(5),
+  confidence: z.number().int().min(1).max(5),
+  summary: z.string().min(12).max(800),
+  strengths: z.string().min(12).max(2000),
+  concerns: z.string().min(12).max(2000),
+  recommendation: reviewRecommendationSchema,
+})
+export type CreatePeerReviewInput = z.infer<typeof createPeerReviewInputSchema>
