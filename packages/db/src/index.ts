@@ -14,6 +14,7 @@ import {
   type DailyDigest,
   dailyDigestSchema,
   type FeedEntry,
+  feedScoringWeights,
   type Opportunity,
   type Paper,
   type Profile,
@@ -25,6 +26,7 @@ import {
   slugify,
   submitPaperToConferenceInputSchema,
   type Topic,
+  trendingScoringWeights,
   type UpdateViewerProfileInput,
   type User,
   updateViewerProfileInputSchema,
@@ -203,17 +205,18 @@ function scoreFeedPaper(paper: Paper, viewer: User | null, state: DemoState): Fe
     : 0
   const commentHits = state.comments.filter((comment) => comment.paperId === paper.id).length
   const reviewSignal = computePaperReviewSignal(paper, state)
+  const w = feedScoringWeights
   const recencyBoost = Math.max(
     1,
-    24 - Math.floor((Date.now() - new Date(paper.createdAt).getTime()) / 86_400_000),
+    w.recencyMaxDays - Math.floor((Date.now() - new Date(paper.createdAt).getTime()) / 86_400_000),
   )
   const score =
     recencyBoost +
-    paper.starCount * 2 +
-    commentHits * 3 +
-    reviewSignal * 2 +
-    interestHits * 5 +
-    topicHits * 4
+    paper.starCount * w.stars +
+    commentHits * w.discussion +
+    reviewSignal * w.reviewSignal +
+    interestHits * w.interestMatch +
+    topicHits * w.topicOverlap
 
   const reasons = [
     interestHits > 0 ? `${interestHits} interest match${interestHits > 1 ? "es" : ""}` : null,
@@ -234,11 +237,16 @@ function scoreFeedPaper(paper: Paper, viewer: User | null, state: DemoState): Fe
 function scoreTrendingPaper(paper: Paper, state: DemoState): FeedEntry {
   const commentHits = state.comments.filter((comment) => comment.paperId === paper.id).length
   const reviewSignal = computePaperReviewSignal(paper, state)
+  const w = trendingScoringWeights
   const recencyBoost = Math.max(
     1,
-    16 - Math.floor((Date.now() - new Date(paper.createdAt).getTime()) / 86_400_000),
+    w.recencyMaxDays - Math.floor((Date.now() - new Date(paper.createdAt).getTime()) / 86_400_000),
   )
-  const score = paper.starCount * 4 + commentHits * 3 + reviewSignal * 3 + recencyBoost
+  const score =
+    paper.starCount * w.stars +
+    commentHits * w.discussion +
+    reviewSignal * w.reviewSignal +
+    recencyBoost
 
   return {
     id: `trending_${paper.id}`,

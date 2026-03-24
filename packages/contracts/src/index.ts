@@ -137,6 +137,38 @@ export const moderationFlagSchema = z.object({
 })
 export type ModerationFlag = z.infer<typeof moderationFlagSchema>
 
+// ---------------------------------------------------------------------------
+// Recommendation scoring weights
+// ---------------------------------------------------------------------------
+
+export const feedScoringWeights = {
+  /** Weight applied to each viewer-interest keyword match */
+  interestMatch: 5,
+  /** Weight applied to each topic overlap with viewer interests */
+  topicOverlap: 4,
+  /** Weight applied to each discussion/comment on the paper */
+  discussion: 3,
+  /** Weight applied to the star count */
+  stars: 2,
+  /** Weight applied to the peer-review signal count */
+  reviewSignal: 2,
+  /** Maximum recency bonus (in days) — score decays linearly from this value */
+  recencyMaxDays: 24,
+} as const satisfies Record<string, number>
+
+export const trendingScoringWeights = {
+  /** Weight applied to the star count */
+  stars: 4,
+  /** Weight applied to each discussion/comment on the paper */
+  discussion: 3,
+  /** Weight applied to the peer-review signal count */
+  reviewSignal: 3,
+  /** Maximum recency bonus (in days) */
+  recencyMaxDays: 16,
+} as const satisfies Record<string, number>
+
+export type ScoringWeights = typeof feedScoringWeights | typeof trendingScoringWeights
+
 export const feedEntrySchema = z.object({
   id: z.string(),
   paper: publicPaperSchema,
