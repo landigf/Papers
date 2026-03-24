@@ -31,9 +31,11 @@ import {
 } from "@papers/contracts"
 import {
   type DemoState,
+  getDemoCacheStore,
   getPublicComments,
   getPublicPaper,
   readDemoState,
+  runWithDemoCache,
   writeDemoState,
 } from "./demo-store"
 import {
@@ -303,14 +305,23 @@ function matchOpportunity(
 }
 
 class DemoRepository implements PapersRepository {
+  private cached<T>(fn: () => Promise<T>): Promise<T> {
+    if (getDemoCacheStore()) {
+      return fn()
+    }
+    return runWithDemoCache(fn)
+  }
+
   async getViewer(handle?: string | null): Promise<User | null> {
-    const state = await readDemoState()
-    const resolvedHandle = await getViewerHandle(handle)
-    return (
-      state.users.find((user) => user.handle === resolvedHandle) ??
-      state.users.find((user) => user.email === resolvedHandle) ??
-      null
-    )
+    return this.cached(async () => {
+      const state = await readDemoState()
+      const resolvedHandle = await getViewerHandle(handle)
+      return (
+        state.users.find((user) => user.handle === resolvedHandle) ??
+        state.users.find((user) => user.email === resolvedHandle) ??
+        null
+      )
+    })
   }
 
   async upsertDemoViewer(input: {
@@ -320,562 +331,601 @@ class DemoRepository implements PapersRepository {
     affiliation?: string | null
     interestLabels?: string[]
   }): Promise<User> {
-    const state = await readDemoState()
-    const normalizedHandle = slugify(input.handle)
-    const existing =
-      state.users.find((user) => user.handle === normalizedHandle) ??
-      state.users.find((user) => user.email === input.email)
+    return this.cached(async () => {
+      const state = await readDemoState()
+      const normalizedHandle = slugify(input.handle)
+      const existing =
+        state.users.find((user) => user.handle === normalizedHandle) ??
+        state.users.find((user) => user.email === input.email)
 
-    if (existing) {
-      return existing
-    }
+      if (existing) {
+        return existing
+      }
 
-    const createdAt = nowIso()
-    const user: User = {
-      id: randomUUID(),
-      email: input.email,
-      name: input.name,
-      handle: normalizedHandle,
-      createdAt,
-      profile: {
+      const createdAt = nowIso()
+      const user: User = {
         id: randomUUID(),
+        email: input.email,
+        name: input.name,
         handle: normalizedHandle,
-        displayName: input.name,
-        headline: "Researcher building in public without wasting signal.",
-        bio: "Joined through demo mode. Start by setting your interests, collaborations, and active research questions.",
-        affiliation: input.affiliation ?? null,
-        researchInterests: dedupeStrings(input.interestLabels ?? []),
-        orcid: null,
-        isVerifiedResearcher: false,
-      },
-      externalIdentities: [],
-    }
+        createdAt,
+        profile: {
+          id: randomUUID(),
+          handle: normalizedHandle,
+          displayName: input.name,
+          headline: "Researcher building in public without wasting signal.",
+          bio: "Joined through demo mode. Start by setting your interests, collaborations, and active research questions.",
+          affiliation: input.affiliation ?? null,
+          researchInterests: dedupeStrings(input.interestLabels ?? []),
+          orcid: null,
+          isVerifiedResearcher: false,
+        },
+        externalIdentities: [],
+      }
 
-    state.users.push(user)
-    await writeDemoState(state)
-    return user
+      state.users.push(user)
+      await writeDemoState(state)
+      return user
+    })
   }
 
   async updateViewerProfile(
     input: UpdateViewerProfileInput,
     viewerHandle?: string | null,
   ): Promise<User> {
-    const parsed = updateViewerProfileInputSchema.parse(input)
-    const state = await readDemoState()
-    const viewer = await this.getViewer(viewerHandle)
+    return this.cached(async () => {
+      const parsed = updateViewerProfileInputSchema.parse(input)
+      const state = await readDemoState()
+      const viewer = await this.getViewer(viewerHandle)
 
-    if (!viewer) {
-      throw new Error("A viewer is required to update the profile.")
-    }
+      if (!viewer) {
+        throw new Error("A viewer is required to update the profile.")
+      }
 
-    const target = state.users.find((user) => user.id === viewer.id)
-    if (!target) {
-      throw new Error("Viewer not found.")
-    }
+      const target = state.users.find((user) => user.id === viewer.id)
+      if (!target) {
+        throw new Error("Viewer not found.")
+      }
 
-    target.profile.headline = parsed.headline || null
-    target.profile.bio = parsed.bio || null
-    target.profile.affiliation = parsed.affiliation || null
-    target.profile.researchInterests = dedupeStrings(parsed.interestLabels)
-    await writeDemoState(state)
-    return target
+      target.profile.headline = parsed.headline || null
+      target.profile.bio = parsed.bio || null
+      target.profile.affiliation = parsed.affiliation || null
+      target.profile.researchInterests = dedupeStrings(parsed.interestLabels)
+      await writeDemoState(state)
+      return target
+    })
   }
 
   async getRoadmap(): Promise<RoadmapBucket> {
-    return (await readDemoState()).roadmap
+    return this.cached(async () => {
+      return (await readDemoState()).roadmap
+    })
   }
 
   async getFeed(input?: {
     viewerHandle?: string | null
     query?: string | null
   }): Promise<FeedEntry[]> {
-    const state = await readDemoState()
-    const viewer = await this.getViewer(input?.viewerHandle)
-    const normalizedQuery = input?.query?.trim().toLowerCase()
+    return this.cached(async () => {
+      const state = await readDemoState()
+      const viewer = await this.getViewer(input?.viewerHandle)
+      const normalizedQuery = input?.query?.trim().toLowerCase()
 
-    return state.papers
-      .filter((paper) => {
-        if (!normalizedQuery) {
-          return true
-        }
+      return state.papers
+        .filter((paper) => {
+          if (!normalizedQuery) {
+            return true
+          }
 
-        return `${paper.title} ${paper.abstract} ${paper.topics.map((topic) => topic.label).join(" ")}`
-          .toLowerCase()
-          .includes(normalizedQuery)
-      })
-      .map((paper) => scoreFeedPaper(paper, viewer, state))
-      .sort((left, right) => right.score - left.score)
+          return `${paper.title} ${paper.abstract} ${paper.topics.map((topic) => topic.label).join(" ")}`
+            .toLowerCase()
+            .includes(normalizedQuery)
+        })
+        .map((paper) => scoreFeedPaper(paper, viewer, state))
+        .sort((left, right) => right.score - left.score)
+    })
   }
 
   async listTrendingPapers(input?: {
     viewerHandle?: string | null
     limit?: number
   }): Promise<FeedEntry[]> {
-    const state = await readDemoState()
-    const limit = input?.limit ?? 3
+    return this.cached(async () => {
+      const state = await readDemoState()
+      const limit = input?.limit ?? 3
 
-    return state.papers
-      .map((paper) => scoreTrendingPaper(paper, state))
-      .sort((left, right) => right.score - left.score)
-      .slice(0, limit)
+      return state.papers
+        .map((paper) => scoreTrendingPaper(paper, state))
+        .sort((left, right) => right.score - left.score)
+        .slice(0, limit)
+    })
   }
 
   async getPaperBySlug(slug: string, viewerHandle?: string | null): Promise<PaperDetail | null> {
-    const state = await readDemoState()
-    const viewer = await this.getViewer(viewerHandle)
-    const paper = state.papers.find((entry) => entry.slug === slug || entry.id === slug)
+    return this.cached(async () => {
+      const state = await readDemoState()
+      const viewer = await this.getViewer(viewerHandle)
+      const paper = state.papers.find((entry) => entry.slug === slug || entry.id === slug)
 
-    if (!paper) {
-      return null
-    }
+      if (!paper) {
+        return null
+      }
 
-    const interestLabels = getViewerInterestLabels(viewer, state)
+      const interestLabels = getViewerInterestLabels(viewer, state)
 
-    return {
-      paper: {
-        ...getPublicPaper(paper),
-        isSavedByViewer: interestLabels.some((interest) =>
-          paper.topics.some((topic) => interest.toLowerCase().includes(topic.label.toLowerCase())),
+      return {
+        paper: {
+          ...getPublicPaper(paper),
+          isSavedByViewer: interestLabels.some((interest) =>
+            paper.topics.some((topic) =>
+              interest.toLowerCase().includes(topic.label.toLowerCase()),
+            ),
+          ),
+        },
+        comments: getPublicComments(
+          state.comments.filter((comment) => comment.paperId === paper.id),
+          paper,
         ),
-      },
-      comments: getPublicComments(
-        state.comments.filter((comment) => comment.paperId === paper.id),
-        paper,
-      ),
-    }
+      }
+    })
   }
 
   async getProfileByHandle(
     handle: string,
     viewerHandle?: string | null,
   ): Promise<ProfileDetail | null> {
-    const state = await readDemoState()
-    const viewer = await this.getViewer(viewerHandle)
-    const user = state.users.find((entry) => entry.handle === handle)
+    return this.cached(async () => {
+      const state = await readDemoState()
+      const viewer = await this.getViewer(viewerHandle)
+      const user = state.users.find((entry) => entry.handle === handle)
 
-    if (!user) {
-      return null
-    }
+      if (!user) {
+        return null
+      }
 
-    return {
-      profile: user.profile,
-      papers: state.papers
-        .filter((paper) => paper.ownerId === user.id && paper.visibilityMode === "public")
-        .map(getPublicPaper),
-      isFollowedByViewer:
-        viewer !== null &&
-        state.papers.some(
-          (paper) =>
-            paper.ownerId === user.id &&
-            paper.visibilityMode === "public" &&
-            paper.isFollowedByViewer,
-        ),
-    }
+      return {
+        profile: user.profile,
+        papers: state.papers
+          .filter((paper) => paper.ownerId === user.id && paper.visibilityMode === "public")
+          .map(getPublicPaper),
+        isFollowedByViewer:
+          viewer !== null &&
+          state.papers.some(
+            (paper) =>
+              paper.ownerId === user.id &&
+              paper.visibilityMode === "public" &&
+              paper.isFollowedByViewer,
+          ),
+      }
+    })
   }
 
   async createPaper(input: CreatePaperInput, viewerHandle?: string | null): Promise<PublicPaper> {
-    const parsed = createPaperInputSchema.parse(input)
-    const state = await readDemoState()
-    const viewer = await this.getViewer(viewerHandle)
+    return this.cached(async () => {
+      const parsed = createPaperInputSchema.parse(input)
+      const state = await readDemoState()
+      const viewer = await this.getViewer(viewerHandle)
 
-    if (!viewer) {
-      throw new Error("A viewer is required to publish a paper.")
-    }
+      if (!viewer) {
+        throw new Error("A viewer is required to publish a paper.")
+      }
 
-    const createdAt = nowIso()
-    const paper: Paper = {
-      id: randomUUID(),
-      slug: `${slugify(parsed.title)}-${Math.random().toString(36).slice(2, 6)}`,
-      title: parsed.title,
-      abstract: parsed.abstract,
-      bodyMarkdown: parsed.bodyMarkdown,
-      visibilityMode: parsed.visibilityMode,
-      ownerId: viewer.id,
-      publicAuthorProfile: parsed.visibilityMode === "blind" ? null : viewer.profile,
-      topics: deriveTopics(parsed.topicLabels),
-      createdAt,
-      updatedAt: createdAt,
-      commentCount: 0,
-      starCount: 0,
-      followerCount: 0,
-      isStarredByViewer: false,
-      isFollowedByViewer: false,
-      isSavedByViewer: false,
-      latestVersion: {
+      const createdAt = nowIso()
+      const paper: Paper = {
         id: randomUUID(),
-        paperId: "",
+        slug: `${slugify(parsed.title)}-${Math.random().toString(36).slice(2, 6)}`,
         title: parsed.title,
         abstract: parsed.abstract,
         bodyMarkdown: parsed.bodyMarkdown,
+        visibilityMode: parsed.visibilityMode,
+        ownerId: viewer.id,
+        publicAuthorProfile: parsed.visibilityMode === "blind" ? null : viewer.profile,
+        topics: deriveTopics(parsed.topicLabels),
         createdAt,
-      },
-      assets: [],
-    }
-    paper.latestVersion.paperId = paper.id
+        updatedAt: createdAt,
+        commentCount: 0,
+        starCount: 0,
+        followerCount: 0,
+        isStarredByViewer: false,
+        isFollowedByViewer: false,
+        isSavedByViewer: false,
+        latestVersion: {
+          id: randomUUID(),
+          paperId: "",
+          title: parsed.title,
+          abstract: parsed.abstract,
+          bodyMarkdown: parsed.bodyMarkdown,
+          createdAt,
+        },
+        assets: [],
+      }
+      paper.latestVersion.paperId = paper.id
 
-    state.papers.unshift(paper)
-    await writeDemoState(state)
-    return getPublicPaper(paper)
+      state.papers.unshift(paper)
+      await writeDemoState(state)
+      return getPublicPaper(paper)
+    })
   }
 
   async createComment(input: CreateCommentInput, viewerHandle?: string | null): Promise<Comment> {
-    const parsed = createCommentInputSchema.parse(input)
-    const state = await readDemoState()
-    const viewer = await this.getViewer(viewerHandle)
+    return this.cached(async () => {
+      const parsed = createCommentInputSchema.parse(input)
+      const state = await readDemoState()
+      const viewer = await this.getViewer(viewerHandle)
 
-    if (!viewer) {
-      throw new Error("A viewer is required to comment.")
-    }
+      if (!viewer) {
+        throw new Error("A viewer is required to comment.")
+      }
 
-    const paper = state.papers.find(
-      (entry) => entry.id === parsed.paperId || entry.slug === parsed.paperId,
-    )
+      const paper = state.papers.find(
+        (entry) => entry.id === parsed.paperId || entry.slug === parsed.paperId,
+      )
 
-    if (!paper) {
-      throw new Error("Paper not found.")
-    }
+      if (!paper) {
+        throw new Error("Paper not found.")
+      }
 
-    const comment: Comment = {
-      id: randomUUID(),
-      paperId: paper.id,
-      authorProfile: paper.visibilityMode === "blind" ? null : viewer.profile,
-      body: parsed.body,
-      createdAt: nowIso(),
-      isBlindSafe: true,
-    }
+      const comment: Comment = {
+        id: randomUUID(),
+        paperId: paper.id,
+        authorProfile: paper.visibilityMode === "blind" ? null : viewer.profile,
+        body: parsed.body,
+        createdAt: nowIso(),
+        isBlindSafe: true,
+      }
 
-    state.comments.push(comment)
-    paper.commentCount += 1
-    paper.updatedAt = nowIso()
-    await writeDemoState(state)
-    return comment
+      state.comments.push(comment)
+      paper.commentCount += 1
+      paper.updatedAt = nowIso()
+      await writeDemoState(state)
+      return comment
+    })
   }
 
   async toggleFollow(handle: string, viewerHandle?: string | null): Promise<boolean> {
-    const state = await readDemoState()
-    const viewer = await this.getViewer(viewerHandle)
-    const target = state.users.find((user) => user.handle === handle)
+    return this.cached(async () => {
+      const state = await readDemoState()
+      const viewer = await this.getViewer(viewerHandle)
+      const target = state.users.find((user) => user.handle === handle)
 
-    if (!viewer || !target || viewer.id === target.id) {
-      return false
-    }
+      if (!viewer || !target || viewer.id === target.id) {
+        return false
+      }
 
-    const targetPapers = state.papers.filter((paper) => paper.ownerId === target.id)
-    const nextValue = !(targetPapers[0]?.isFollowedByViewer ?? false)
-    for (const paper of targetPapers) {
-      paper.isFollowedByViewer = nextValue
-      paper.followerCount = Math.max(0, paper.followerCount + (nextValue ? 1 : -1))
-    }
-    await writeDemoState(state)
-    return nextValue
+      const targetPapers = state.papers.filter((paper) => paper.ownerId === target.id)
+      const nextValue = !(targetPapers[0]?.isFollowedByViewer ?? false)
+      for (const paper of targetPapers) {
+        paper.isFollowedByViewer = nextValue
+        paper.followerCount = Math.max(0, paper.followerCount + (nextValue ? 1 : -1))
+      }
+      await writeDemoState(state)
+      return nextValue
+    })
   }
 
   async toggleStar(slug: string, viewerHandle?: string | null): Promise<boolean> {
-    const state = await readDemoState()
-    const viewer = await this.getViewer(viewerHandle)
-    if (!viewer) {
-      return false
-    }
+    return this.cached(async () => {
+      const state = await readDemoState()
+      const viewer = await this.getViewer(viewerHandle)
+      if (!viewer) {
+        return false
+      }
 
-    const paper = state.papers.find((entry) => entry.slug === slug || entry.id === slug)
-    if (!paper) {
-      return false
-    }
+      const paper = state.papers.find((entry) => entry.slug === slug || entry.id === slug)
+      if (!paper) {
+        return false
+      }
 
-    paper.isStarredByViewer = !paper.isStarredByViewer
-    paper.starCount = Math.max(0, paper.starCount + (paper.isStarredByViewer ? 1 : -1))
-    paper.updatedAt = nowIso()
-    await writeDemoState(state)
-    return paper.isStarredByViewer
+      paper.isStarredByViewer = !paper.isStarredByViewer
+      paper.starCount = Math.max(0, paper.starCount + (paper.isStarredByViewer ? 1 : -1))
+      paper.updatedAt = nowIso()
+      await writeDemoState(state)
+      return paper.isStarredByViewer
+    })
   }
 
   async saveInterest(label: string, viewerHandle?: string | null): Promise<SavedInterest> {
-    const parsed = saveInterestInputSchema.parse({ label })
-    const state = await readDemoState()
-    const viewer = await this.getViewer(viewerHandle)
+    return this.cached(async () => {
+      const parsed = saveInterestInputSchema.parse({ label })
+      const state = await readDemoState()
+      const viewer = await this.getViewer(viewerHandle)
 
-    if (!viewer) {
-      throw new Error("A viewer is required to save an interest.")
-    }
+      if (!viewer) {
+        throw new Error("A viewer is required to save an interest.")
+      }
 
-    const existing = state.savedInterests.find(
-      (interest) =>
-        interest.userId === viewer.id &&
-        interest.label.toLowerCase() === parsed.label.toLowerCase(),
-    )
-    if (existing) {
-      return existing
-    }
+      const existing = state.savedInterests.find(
+        (interest) =>
+          interest.userId === viewer.id &&
+          interest.label.toLowerCase() === parsed.label.toLowerCase(),
+      )
+      if (existing) {
+        return existing
+      }
 
-    const savedInterest: SavedInterest = {
-      id: randomUUID(),
-      userId: viewer.id,
-      label: parsed.label,
-      createdAt: nowIso(),
-    }
-    state.savedInterests.push(savedInterest)
-    await writeDemoState(state)
-    return savedInterest
+      const savedInterest: SavedInterest = {
+        id: randomUUID(),
+        userId: viewer.id,
+        label: parsed.label,
+        createdAt: nowIso(),
+      }
+      state.savedInterests.push(savedInterest)
+      await writeDemoState(state)
+      return savedInterest
+    })
   }
 
   async listConferences(): Promise<Conference[]> {
-    const state = await readDemoState()
-    return state.conferences
-      .map((conference) => ({
-        ...conference,
-        submissionCount: state.submissions.filter(
-          (submission) => submission.conferenceId === conference.id,
-        ).length,
-        reviewCount: state.peerReviews.filter((review) => review.conferenceId === conference.id)
-          .length,
-      }))
-      .sort((left, right) => Number(right.featured) - Number(left.featured))
+    return this.cached(async () => {
+      const state = await readDemoState()
+      return state.conferences
+        .map((conference) => ({
+          ...conference,
+          submissionCount: state.submissions.filter(
+            (submission) => submission.conferenceId === conference.id,
+          ).length,
+          reviewCount: state.peerReviews.filter((review) => review.conferenceId === conference.id)
+            .length,
+        }))
+        .sort((left, right) => Number(right.featured) - Number(left.featured))
+    })
   }
 
   async getConferenceBySlug(
     slug: string,
     viewerHandle?: string | null,
   ): Promise<ConferenceDetail | null> {
-    const state = await readDemoState()
-    const viewer = await this.getViewer(viewerHandle)
-    const conference = state.conferences.find((entry) => entry.slug === slug || entry.id === slug)
+    return this.cached(async () => {
+      const state = await readDemoState()
+      const viewer = await this.getViewer(viewerHandle)
+      const conference = state.conferences.find((entry) => entry.slug === slug || entry.id === slug)
 
-    if (!conference) {
-      return null
-    }
+      if (!conference) {
+        return null
+      }
 
-    const submissions = state.submissions
-      .filter((submission) => submission.conferenceId === conference.id)
-      .map((submission) => hydrateSubmission(submission, state))
-      .sort((left, right) => {
-        const rightScore = right.averageScore ?? 0
-        const leftScore = left.averageScore ?? 0
-        return rightScore - leftScore
-      })
+      const submissions = state.submissions
+        .filter((submission) => submission.conferenceId === conference.id)
+        .map((submission) => hydrateSubmission(submission, state))
+        .sort((left, right) => {
+          const rightScore = right.averageScore ?? 0
+          const leftScore = left.averageScore ?? 0
+          return rightScore - leftScore
+        })
 
-    const viewerPapers =
-      viewer === null
-        ? []
-        : state.papers
-            .filter(
-              (paper) =>
-                paper.ownerId === viewer.id &&
-                !state.submissions.some(
-                  (submission) =>
-                    submission.conferenceId === conference.id && submission.paperId === paper.id,
-                ),
-            )
-            .map(getPublicPaper)
+      const viewerPapers =
+        viewer === null
+          ? []
+          : state.papers
+              .filter(
+                (paper) =>
+                  paper.ownerId === viewer.id &&
+                  !state.submissions.some(
+                    (submission) =>
+                      submission.conferenceId === conference.id && submission.paperId === paper.id,
+                  ),
+              )
+              .map(getPublicPaper)
 
-    return {
-      conference: {
-        ...conference,
-        submissionCount: submissions.length,
-        reviewCount: state.peerReviews.filter((review) => review.conferenceId === conference.id)
-          .length,
-      },
-      submissions,
-      viewerPapers,
-    }
+      return {
+        conference: {
+          ...conference,
+          submissionCount: submissions.length,
+          reviewCount: state.peerReviews.filter((review) => review.conferenceId === conference.id)
+            .length,
+        },
+        submissions,
+        viewerPapers,
+      }
+    })
   }
 
   async submitPaperToConference(
     input: SubmitPaperToConferenceInput,
     viewerHandle?: string | null,
   ): Promise<ConferenceSubmission> {
-    const parsed = submitPaperToConferenceInputSchema.parse(input)
-    const state = await readDemoState()
-    const viewer = await this.getViewer(viewerHandle)
+    return this.cached(async () => {
+      const parsed = submitPaperToConferenceInputSchema.parse(input)
+      const state = await readDemoState()
+      const viewer = await this.getViewer(viewerHandle)
 
-    if (!viewer) {
-      throw new Error("A viewer is required to submit to a conference.")
-    }
+      if (!viewer) {
+        throw new Error("A viewer is required to submit to a conference.")
+      }
 
-    const conference = state.conferences.find((entry) => entry.slug === parsed.conferenceSlug)
-    const paper = state.papers.find((entry) => entry.slug === parsed.paperSlug)
+      const conference = state.conferences.find((entry) => entry.slug === parsed.conferenceSlug)
+      const paper = state.papers.find((entry) => entry.slug === parsed.paperSlug)
 
-    if (!conference || !paper) {
-      throw new Error("Conference or paper not found.")
-    }
-    if (paper.ownerId !== viewer.id) {
-      throw new Error("You can only submit your own papers.")
-    }
+      if (!conference || !paper) {
+        throw new Error("Conference or paper not found.")
+      }
+      if (paper.ownerId !== viewer.id) {
+        throw new Error("You can only submit your own papers.")
+      }
 
-    const existing = state.submissions.find(
-      (submission) => submission.conferenceId === conference.id && submission.paperId === paper.id,
-    )
-    if (existing) {
-      return existing
-    }
+      const existing = state.submissions.find(
+        (submission) =>
+          submission.conferenceId === conference.id && submission.paperId === paper.id,
+      )
+      if (existing) {
+        return existing
+      }
 
-    const submission = conferenceSubmissionSchema.parse({
-      id: randomUUID(),
-      conferenceId: conference.id,
-      paperId: paper.id,
-      paper: getPublicPaper(paper),
-      status: "submitted",
-      submittedAt: nowIso(),
-      reviewCount: 0,
-      averageScore: null,
+      const submission = conferenceSubmissionSchema.parse({
+        id: randomUUID(),
+        conferenceId: conference.id,
+        paperId: paper.id,
+        paper: getPublicPaper(paper),
+        status: "submitted",
+        submittedAt: nowIso(),
+        reviewCount: 0,
+        averageScore: null,
+      })
+
+      state.submissions.unshift(submission)
+      conference.submissionCount += 1
+      await writeDemoState(state)
+      return submission
     })
-
-    state.submissions.unshift(submission)
-    conference.submissionCount += 1
-    await writeDemoState(state)
-    return submission
   }
 
   async createPeerReview(
     input: CreatePeerReviewInput,
     viewerHandle?: string | null,
   ): Promise<DemoState["peerReviews"][number]> {
-    const parsed = createPeerReviewInputSchema.parse(input)
-    const state = await readDemoState()
-    const viewer = await this.getViewer(viewerHandle)
+    return this.cached(async () => {
+      const parsed = createPeerReviewInputSchema.parse(input)
+      const state = await readDemoState()
+      const viewer = await this.getViewer(viewerHandle)
 
-    if (!viewer) {
-      throw new Error("A viewer is required to review submissions.")
-    }
+      if (!viewer) {
+        throw new Error("A viewer is required to review submissions.")
+      }
 
-    const conference = state.conferences.find((entry) => entry.slug === parsed.conferenceSlug)
-    const submission = state.submissions.find((entry) => entry.id === parsed.submissionId)
-    if (!conference || !submission || submission.conferenceId !== conference.id) {
-      throw new Error("Submission not found for this conference.")
-    }
+      const conference = state.conferences.find((entry) => entry.slug === parsed.conferenceSlug)
+      const submission = state.submissions.find((entry) => entry.id === parsed.submissionId)
+      if (!conference || !submission || submission.conferenceId !== conference.id) {
+        throw new Error("Submission not found for this conference.")
+      }
 
-    const paper = state.papers.find((entry) => entry.id === submission.paperId)
-    if (!paper) {
-      throw new Error("Paper not found.")
-    }
-    if (paper.ownerId === viewer.id) {
-      throw new Error("You cannot review your own submission.")
-    }
+      const paper = state.papers.find((entry) => entry.id === submission.paperId)
+      if (!paper) {
+        throw new Error("Paper not found.")
+      }
+      if (paper.ownerId === viewer.id) {
+        throw new Error("You cannot review your own submission.")
+      }
 
-    const existing = state.peerReviews.find(
-      (review) =>
-        review.submissionId === submission.id && review.reviewerProfile?.handle === viewer.handle,
-    )
-    if (existing) {
-      return existing
-    }
+      const existing = state.peerReviews.find(
+        (review) =>
+          review.submissionId === submission.id && review.reviewerProfile?.handle === viewer.handle,
+      )
+      if (existing) {
+        return existing
+      }
 
-    const review = {
-      id: randomUUID(),
-      conferenceId: conference.id,
-      submissionId: submission.id,
-      reviewerProfile: viewer.profile,
-      score: parsed.score,
-      confidence: parsed.confidence,
-      summary: parsed.summary,
-      strengths: parsed.strengths,
-      concerns: parsed.concerns,
-      recommendation: parsed.recommendation,
-      createdAt: nowIso(),
-    } satisfies DemoState["peerReviews"][number]
+      const review = {
+        id: randomUUID(),
+        conferenceId: conference.id,
+        submissionId: submission.id,
+        reviewerProfile: viewer.profile,
+        score: parsed.score,
+        confidence: parsed.confidence,
+        summary: parsed.summary,
+        strengths: parsed.strengths,
+        concerns: parsed.concerns,
+        recommendation: parsed.recommendation,
+        createdAt: nowIso(),
+      } satisfies DemoState["peerReviews"][number]
 
-    state.peerReviews.unshift(review)
-    submission.status = "under_review"
-    submission.reviewCount += 1
-    const scores = state.peerReviews
-      .filter((entry) => entry.submissionId === submission.id)
-      .map((entry) => entry.score)
-    submission.averageScore = Number(
-      (scores.reduce((sum, score) => sum + score, 0) / scores.length).toFixed(1),
-    )
-    conference.reviewCount += 1
-    await writeDemoState(state)
-    return review
+      state.peerReviews.unshift(review)
+      submission.status = "under_review"
+      submission.reviewCount += 1
+      const scores = state.peerReviews
+        .filter((entry) => entry.submissionId === submission.id)
+        .map((entry) => entry.score)
+      submission.averageScore = Number(
+        (scores.reduce((sum, score) => sum + score, 0) / scores.length).toFixed(1),
+      )
+      conference.reviewCount += 1
+      await writeDemoState(state)
+      return review
+    })
   }
 
   async getDailyDigest(viewerHandle?: string | null): Promise<DailyDigest> {
-    const state = await readDemoState()
-    const viewer = await this.getViewer(viewerHandle)
-    const feed = await this.getFeed({ viewerHandle })
-    const trending = await this.listTrendingPapers({ viewerHandle, limit: 3 })
-    const opportunities = await this.getOpportunities(viewerHandle)
+    return this.cached(async () => {
+      const state = await readDemoState()
+      const viewer = await this.getViewer(viewerHandle)
+      const feed = await this.getFeed({ viewerHandle })
+      const trending = await this.listTrendingPapers({ viewerHandle, limit: 3 })
+      const opportunities = await this.getOpportunities(viewerHandle)
 
-    const insideOrbit = feed.slice(0, 3)
-    const adjacentPaper =
-      feed.find(
-        (entry) =>
-          viewer &&
-          !entry.paper.topics.some((topic) =>
-            viewer.profile.researchInterests.some((interest) =>
-              interest.toLowerCase().includes(topic.label.toLowerCase()),
+      const insideOrbit = feed.slice(0, 3)
+      const adjacentPaper =
+        feed.find(
+          (entry) =>
+            viewer &&
+            !entry.paper.topics.some((topic) =>
+              viewer.profile.researchInterests.some((interest) =>
+                interest.toLowerCase().includes(topic.label.toLowerCase()),
+              ),
             ),
-          ),
-      ) ?? feed[2]
+        ) ?? feed[2]
 
-    const openCalls = state.conferences
-      .filter((conference) => conference.status !== "closed")
-      .slice(0, 2)
+      const openCalls = state.conferences
+        .filter((conference) => conference.status !== "closed")
+        .slice(0, 2)
 
-    return dailyDigestSchema.parse({
-      id: `digest_${slugify(viewer?.handle ?? "guest")}`,
-      title: viewer
-        ? `Daily briefing for ${viewer.profile.displayName}`
-        : "Daily research briefing",
-      intro:
-        "Papers is designed for signal, not passive scrolling. This briefing prioritizes current relevance, conference momentum, and cross-disciplinary opportunities.",
-      generatedAt: nowIso(),
-      sections: [
-        {
-          id: "digest_interest",
-          title: "Inside your orbit",
-          summary:
-            "Papers close to your declared interests, saved topics, and recent social signal.",
-          items: insideOrbit.map(
-            (entry) => `${entry.paper.title} — ${entry.reasons.slice(0, 2).join(", ")}`,
-          ),
-        },
-        {
-          id: "digest_trending",
-          title: "Trending right now",
-          summary: "Papers with the strongest current social and review momentum.",
-          items: trending.map((entry) => `${entry.paper.title} — ${entry.reasons.join(", ")}`),
-        },
-        {
-          id: "digest_adjacent",
-          title: "Worth crossing into",
-          summary:
-            "A paper outside your default lane so discovery stays expansive instead of self-sealing.",
-          items: adjacentPaper
-            ? [`${adjacentPaper.paper.title} — ${adjacentPaper.paper.abstract}`]
-            : [],
-        },
-        {
-          id: "digest_calls",
-          title: "Competition and conference momentum",
-          summary:
-            "Open calls and review deadlines that can move current work into public feedback loops.",
-          items: openCalls.map(
-            (conference) =>
-              `${conference.name} — submissions ${conference.submissionCount}, reviews ${conference.reviewCount}, deadline ${conference.submissionDeadline.slice(0, 10)}`,
-          ),
-        },
-        {
-          id: "digest_opportunities",
-          title: "Opportunity matches",
-          summary:
-            "Research opportunities aligned with your interests, plus a deliberate adjacent bet.",
-          items: opportunities
-            .slice(0, 3)
-            .map(
-              (opportunity) =>
-                `${opportunity.title} — ${opportunity.matchReasons.slice(0, 2).join(", ")}`,
+      return dailyDigestSchema.parse({
+        id: `digest_${slugify(viewer?.handle ?? "guest")}`,
+        title: viewer
+          ? `Daily briefing for ${viewer.profile.displayName}`
+          : "Daily research briefing",
+        intro:
+          "Papers is designed for signal, not passive scrolling. This briefing prioritizes current relevance, conference momentum, and cross-disciplinary opportunities.",
+        generatedAt: nowIso(),
+        sections: [
+          {
+            id: "digest_interest",
+            title: "Inside your orbit",
+            summary:
+              "Papers close to your declared interests, saved topics, and recent social signal.",
+            items: insideOrbit.map(
+              (entry) => `${entry.paper.title} — ${entry.reasons.slice(0, 2).join(", ")}`,
             ),
-        },
-      ],
+          },
+          {
+            id: "digest_trending",
+            title: "Trending right now",
+            summary: "Papers with the strongest current social and review momentum.",
+            items: trending.map((entry) => `${entry.paper.title} — ${entry.reasons.join(", ")}`),
+          },
+          {
+            id: "digest_adjacent",
+            title: "Worth crossing into",
+            summary:
+              "A paper outside your default lane so discovery stays expansive instead of self-sealing.",
+            items: adjacentPaper
+              ? [`${adjacentPaper.paper.title} — ${adjacentPaper.paper.abstract}`]
+              : [],
+          },
+          {
+            id: "digest_calls",
+            title: "Competition and conference momentum",
+            summary:
+              "Open calls and review deadlines that can move current work into public feedback loops.",
+            items: openCalls.map(
+              (conference) =>
+                `${conference.name} — submissions ${conference.submissionCount}, reviews ${conference.reviewCount}, deadline ${conference.submissionDeadline.slice(0, 10)}`,
+            ),
+          },
+          {
+            id: "digest_opportunities",
+            title: "Opportunity matches",
+            summary:
+              "Research opportunities aligned with your interests, plus a deliberate adjacent bet.",
+            items: opportunities
+              .slice(0, 3)
+              .map(
+                (opportunity) =>
+                  `${opportunity.title} — ${opportunity.matchReasons.slice(0, 2).join(", ")}`,
+              ),
+          },
+        ],
+      })
     })
   }
 
   async getOpportunities(viewerHandle?: string | null): Promise<Opportunity[]> {
-    const state = await readDemoState()
-    const viewer = await this.getViewer(viewerHandle)
+    return this.cached(async () => {
+      const state = await readDemoState()
+      const viewer = await this.getViewer(viewerHandle)
 
-    return state.opportunities
-      .map((opportunity) => matchOpportunity(opportunity, viewer, state))
-      .sort((left, right) => right.matchReasons.length - left.matchReasons.length)
+      return state.opportunities
+        .map((opportunity) => matchOpportunity(opportunity, viewer, state))
+        .sort((left, right) => right.matchReasons.length - left.matchReasons.length)
+    })
   }
 }
 

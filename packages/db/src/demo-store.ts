@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { getPapersConfig } from "@papers/config"
@@ -29,6 +30,17 @@ export type DemoState = {
   submissions: ConferenceSubmission[]
   peerReviews: PeerReview[]
   opportunities: Opportunity[]
+}
+
+type DemoCacheStore = { state: DemoState | null }
+const demoCache = new AsyncLocalStorage<DemoCacheStore>()
+
+export function getDemoCacheStore(): DemoCacheStore | undefined {
+  return demoCache.getStore()
+}
+
+export function runWithDemoCache<T>(fn: () => T): T {
+  return demoCache.run({ state: null }, fn)
 }
 
 function nowIso(): string {
@@ -581,6 +593,11 @@ function getStorePath(): string {
 }
 
 export async function readDemoState(): Promise<DemoState> {
+  const store = demoCache.getStore()
+  if (store?.state) {
+    return store.state
+  }
+
   const filePath = getStorePath()
   await mkdir(path.dirname(filePath), { recursive: true })
 
@@ -611,10 +628,16 @@ export async function readDemoState(): Promise<DemoState> {
         : initial.opportunities,
     }
     await writeFile(filePath, JSON.stringify(normalized, null, 2))
+    if (store) {
+      store.state = normalized
+    }
     return normalized
   } catch {
     const initial = createInitialState()
     await writeFile(filePath, JSON.stringify(initial, null, 2))
+    if (store) {
+      store.state = initial
+    }
     return initial
   }
 }
@@ -622,6 +645,10 @@ export async function readDemoState(): Promise<DemoState> {
 export async function writeDemoState(state: DemoState): Promise<void> {
   await mkdir(path.dirname(getStorePath()), { recursive: true })
   await writeFile(getStorePath(), JSON.stringify(state, null, 2))
+  const store = demoCache.getStore()
+  if (store) {
+    store.state = state
+  }
 }
 
 export function getPublicComments(comments: Comment[], paper: Paper): Comment[] {
