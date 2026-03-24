@@ -1,9 +1,10 @@
 import { getPapersConfig } from "@papers/config"
-import { authAccounts, authSessions, authUsers, authVerifications } from "@papers/db"
+import { authAccounts, authSessions, authUsers, authVerifications, profiles } from "@papers/db"
 import { betterAuth } from "better-auth"
 import { drizzleAdapter } from "better-auth/adapters/drizzle"
 import { nextCookies, toNextJsHandler } from "better-auth/next-js"
 import { genericOAuth } from "better-auth/plugins"
+import { eq } from "drizzle-orm"
 import { drizzle } from "drizzle-orm/node-postgres"
 import { Pool } from "pg"
 
@@ -44,6 +45,20 @@ function getManagedAuth() {
       enabled: true,
       autoSignIn: true,
       requireEmailVerification: false,
+    },
+    databaseHooks: {
+      account: {
+        create: {
+          after: async (account) => {
+            if (account.providerId === "orcid" && account.accountId) {
+              await db
+                .update(profiles)
+                .set({ orcid: account.accountId })
+                .where(eq(profiles.userId, account.userId))
+            }
+          },
+        },
+      },
     },
     plugins: [
       nextCookies(),
