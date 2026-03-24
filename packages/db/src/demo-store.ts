@@ -5,6 +5,7 @@ import type {
   Comment,
   Conference,
   ConferenceSubmission,
+  Follow,
   Opportunity,
   Paper,
   PaperAsset,
@@ -14,6 +15,7 @@ import type {
   PublicPaper,
   RoadmapBucket,
   SavedInterest,
+  Star,
   Topic,
   User,
 } from "@papers/contracts"
@@ -23,6 +25,8 @@ export type DemoState = {
   users: User[]
   papers: Paper[]
   comments: Comment[]
+  follows: Follow[]
+  stars: Star[]
   savedInterests: SavedInterest[]
   roadmap: RoadmapBucket
   conferences: Conference[]
@@ -497,6 +501,75 @@ function createInitialState(): DemoState {
     }),
   ]
 
+  const demoFollows: Follow[] = [
+    {
+      id: "follow_1",
+      followerId: gennaro.id,
+      targetProfileId: maya.profile.id,
+      createdAt: "2026-03-22T08:00:00.000Z",
+    },
+    {
+      id: "follow_2",
+      followerId: maya.id,
+      targetProfileId: gennaro.profile.id,
+      createdAt: "2026-03-22T09:00:00.000Z",
+    },
+    {
+      id: "follow_3",
+      followerId: maya.id,
+      targetProfileId: amina.profile.id,
+      createdAt: "2026-03-22T10:00:00.000Z",
+    },
+    {
+      id: "follow_4",
+      followerId: amina.id,
+      targetProfileId: maya.profile.id,
+      createdAt: "2026-03-22T11:00:00.000Z",
+    },
+  ]
+
+  const demoStars: Star[] = [
+    // Gennaro starred Maya's evaluation paper and Amina's discovery paper
+    {
+      id: "star_1",
+      userId: gennaro.id,
+      paperId: "paper_public_2",
+      createdAt: "2026-03-23T08:00:00.000Z",
+    },
+    {
+      id: "star_2",
+      userId: gennaro.id,
+      paperId: "paper_public_3",
+      createdAt: "2026-03-23T08:10:00.000Z",
+    },
+    // Maya starred Gennaro's collaboration paper and the blind submission
+    {
+      id: "star_3",
+      userId: maya.id,
+      paperId: "paper_public_1",
+      createdAt: "2026-03-23T08:20:00.000Z",
+    },
+    {
+      id: "star_4",
+      userId: maya.id,
+      paperId: "paper_blind_1",
+      createdAt: "2026-03-23T08:30:00.000Z",
+    },
+    // Amina starred both public papers by Gennaro and Maya
+    {
+      id: "star_5",
+      userId: amina.id,
+      paperId: "paper_public_1",
+      createdAt: "2026-03-23T08:40:00.000Z",
+    },
+    {
+      id: "star_6",
+      userId: amina.id,
+      paperId: "paper_public_2",
+      createdAt: "2026-03-23T08:50:00.000Z",
+    },
+  ]
+
   const papersWithCommentCounts = papers.map((paper) => ({
     ...paper,
     commentCount: comments.filter((comment) => comment.paperId === paper.id).length,
@@ -513,6 +586,8 @@ function createInitialState(): DemoState {
     users: [gennaro, maya, amina],
     papers: papersWithCommentCounts,
     comments,
+    follows: demoFollows,
+    stars: demoStars,
     savedInterests: [
       {
         id: "interest_1",
@@ -592,6 +667,8 @@ export async function readDemoState(): Promise<DemoState> {
       users: Array.isArray(parsed.users) ? parsed.users : initial.users,
       papers: Array.isArray(parsed.papers) ? parsed.papers : initial.papers,
       comments: Array.isArray(parsed.comments) ? parsed.comments : initial.comments,
+      follows: Array.isArray(parsed.follows) ? parsed.follows : initial.follows,
+      stars: Array.isArray(parsed.stars) ? parsed.stars : initial.stars,
       savedInterests: Array.isArray(parsed.savedInterests)
         ? parsed.savedInterests
         : initial.savedInterests,

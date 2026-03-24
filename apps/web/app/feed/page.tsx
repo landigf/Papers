@@ -14,7 +14,7 @@ export default async function FeedPage({
 }) {
   const params = await searchParams
   const viewerHandle = await getViewerHandleFromCookies()
-  const [feed, trending, conferences, opportunities] = await Promise.all([
+  const [feed, trending, recommendations, conferences, opportunities] = await Promise.all([
     repository.getFeed({
       viewerHandle,
       query: params.q,
@@ -23,6 +23,7 @@ export default async function FeedPage({
       viewerHandle,
       limit: 3,
     }),
+    repository.getRecommendations(viewerHandle),
     repository.listConferences(),
     repository.getOpportunities(viewerHandle),
   ])
@@ -54,6 +55,15 @@ export default async function FeedPage({
             ))}
           </div>
         </SectionCard>
+        {recommendations.length > 0 && (
+          <SectionCard eyebrow="Recommended" title="Based on your network">
+            <div className="feed-stack">
+              {recommendations.map((entry) => (
+                <FeedCard entry={entry} key={entry.id} />
+              ))}
+            </div>
+          </SectionCard>
+        )}
         <SectionCard eyebrow="Conferences" title="Where feedback is happening">
           <div className="feed-stack">
             {conferences.slice(0, 2).map((conference) => (

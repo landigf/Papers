@@ -14,12 +14,14 @@ import {
   type DailyDigest,
   dailyDigestSchema,
   type FeedEntry,
+  type Follow,
   type Opportunity,
   type Paper,
   type Profile,
   type PublicPaper,
   type RoadmapBucket,
   type SavedInterest,
+  type Star,
   type SubmitPaperToConferenceInput,
   saveInterestInputSchema,
   slugify,
@@ -137,6 +139,7 @@ export interface PapersRepository {
     input: CreatePeerReviewInput,
     viewerHandle?: string | null,
   ): Promise<DemoState["peerReviews"][number]>
+  getRecommendations(viewerHandle?: string | null): Promise<FeedEntry[]>
   getDailyDigest(viewerHandle?: string | null): Promise<DailyDigest>
   getOpportunities(viewerHandle?: string | null): Promise<Opportunity[]>
 }
@@ -175,6 +178,24 @@ function getTopicLabels(topics: Topic[]): string[] {
   return topics.map((topic) => topic.label.toLowerCase())
 }
 
+function getFollowedProfileIds(viewer: User | null, state: DemoState): string[] {
+  if (!viewer) return []
+  return state.follows
+    .filter((follow) => follow.followerId === viewer.id)
+    .map((follow) => follow.targetProfileId)
+}
+
+function getFollowedUserIds(viewer: User | null, state: DemoState): string[] {
+  const profileIds = getFollowedProfileIds(viewer, state)
+  return state.users.filter((user) => profileIds.includes(user.profile.id)).map((user) => user.id)
+}
+
+function countNetworkStars(paper: Paper, followedUserIds: string[], state: DemoState): number {
+  return state.stars.filter(
+    (star) => star.paperId === paper.id && followedUserIds.includes(star.userId),
+  ).length
+}
+
 function computePaperReviewSignal(paper: Paper, state: DemoState): number {
   const relatedSubmissions = state.submissions.filter(
     (submission) => submission.paperId === paper.id,
@@ -207,15 +228,26 @@ function scoreFeedPaper(paper: Paper, viewer: User | null, state: DemoState): Fe
     1,
     24 - Math.floor((Date.now() - new Date(paper.createdAt).getTime()) / 86_400_000),
   )
+
+  const followedUserIds = getFollowedUserIds(viewer, state)
+  const isFromFollowed = followedUserIds.includes(paper.ownerId)
+  const followBoost = isFromFollowed ? 6 : 0
+  const networkStars = countNetworkStars(paper, followedUserIds, state)
+  const networkBoost = Math.min(networkStars * 3, 9)
+
   const score =
     recencyBoost +
     paper.starCount * 2 +
     commentHits * 3 +
     reviewSignal * 2 +
     interestHits * 5 +
-    topicHits * 4
+    topicHits * 4 +
+    followBoost +
+    networkBoost
 
   const reasons = [
+    isFromFollowed ? "from someone you follow" : null,
+    networkStars > 0 ? `starred by ${networkStars} in your network` : null,
     interestHits > 0 ? `${interestHits} interest match${interestHits > 1 ? "es" : ""}` : null,
     topicHits > 0 ? `${topicHits} topic overlap${topicHits > 1 ? "s" : ""}` : null,
     commentHits > 0 ? `${commentHits} active discussion${commentHits > 1 ? "s" : ""}` : null,
@@ -560,8 +592,23 @@ class DemoRepository implements PapersRepository {
       return false
     }
 
+    const existingIndex = state.follows.findIndex(
+      (follow) => follow.followerId === viewer.id && follow.targetProfileId === target.profile.id,
+    )
+    const nextValue = existingIndex === -1
+
+    if (nextValue) {
+      state.follows.push({
+        id: randomUUID(),
+        followerId: viewer.id,
+        targetProfileId: target.profile.id,
+        createdAt: nowIso(),
+      })
+    } else {
+      state.follows.splice(existingIndex, 1)
+    }
+
     const targetPapers = state.papers.filter((paper) => paper.ownerId === target.id)
-    const nextValue = !(targetPapers[0]?.isFollowedByViewer ?? false)
     for (const paper of targetPapers) {
       paper.isFollowedByViewer = nextValue
       paper.followerCount = Math.max(0, paper.followerCount + (nextValue ? 1 : -1))
@@ -582,11 +629,27 @@ class DemoRepository implements PapersRepository {
       return false
     }
 
-    paper.isStarredByViewer = !paper.isStarredByViewer
-    paper.starCount = Math.max(0, paper.starCount + (paper.isStarredByViewer ? 1 : -1))
+    const existingIndex = state.stars.findIndex(
+      (star) => star.userId === viewer.id && star.paperId === paper.id,
+    )
+    const nextValue = existingIndex === -1
+
+    if (nextValue) {
+      state.stars.push({
+        id: randomUUID(),
+        userId: viewer.id,
+        paperId: paper.id,
+        createdAt: nowIso(),
+      })
+    } else {
+      state.stars.splice(existingIndex, 1)
+    }
+
+    paper.isStarredByViewer = nextValue
+    paper.starCount = Math.max(0, paper.starCount + (nextValue ? 1 : -1))
     paper.updatedAt = nowIso()
     await writeDemoState(state)
-    return paper.isStarredByViewer
+    return nextValue
   }
 
   async saveInterest(label: string, viewerHandle?: string | null): Promise<SavedInterest> {
@@ -787,11 +850,90 @@ class DemoRepository implements PapersRepository {
     return review
   }
 
+  async getRecommendations(viewerHandle?: string | null): Promise<FeedEntry[]> {
+    const state = await readDemoState()
+    const viewer = await this.getViewer(viewerHandle)
+    if (!viewer) return []
+
+    const viewerStarredIds = new Set(
+      state.stars.filter((star) => star.userId === viewer.id).map((star) => star.paperId),
+    )
+    const followedUserIds = getFollowedUserIds(viewer, state)
+    const viewerInterests = getViewerInterestLabels(viewer, state)
+
+    // Papers the viewer hasn't starred and didn't author
+    const candidates = state.papers.filter(
+      (paper) => paper.ownerId !== viewer.id && !viewerStarredIds.has(paper.id),
+    )
+
+    return candidates
+      .map((paper) => {
+        const normalizedDocument =
+          `${paper.title} ${paper.abstract} ${paper.topics.map((t) => t.label).join(" ")}`.toLowerCase()
+
+        const isFromFollowed = followedUserIds.includes(paper.ownerId)
+        const networkStars = countNetworkStars(paper, followedUserIds, state)
+
+        // Co-star discovery: find users who starred papers the viewer also starred,
+        // then check if they starred this candidate paper
+        const coStarUserIds = new Set<string>()
+        for (const starredId of viewerStarredIds) {
+          for (const star of state.stars) {
+            if (star.paperId === starredId && star.userId !== viewer.id) {
+              coStarUserIds.add(star.userId)
+            }
+          }
+        }
+        const coStarHits = state.stars.filter(
+          (star) => star.paperId === paper.id && coStarUserIds.has(star.userId),
+        ).length
+
+        const interestHits = viewerInterests.filter((interest) =>
+          normalizedDocument.includes(interest.toLowerCase()),
+        ).length
+        const topicHits = paper.topics.filter((topic) =>
+          viewer.profile.researchInterests.some((interest) =>
+            interest.toLowerCase().includes(topic.label.toLowerCase()),
+          ),
+        ).length
+
+        const score =
+          (isFromFollowed ? 6 : 0) +
+          Math.min(networkStars * 3, 9) +
+          coStarHits * 4 +
+          interestHits * 5 +
+          topicHits * 4
+
+        const reasons = [
+          isFromFollowed ? "from someone you follow" : null,
+          networkStars > 0 ? `starred by ${networkStars} in your network` : null,
+          coStarHits > 0 ? `${coStarHits} co-star signal${coStarHits > 1 ? "s" : ""}` : null,
+          interestHits > 0 ? `${interestHits} interest match${interestHits > 1 ? "es" : ""}` : null,
+          topicHits > 0 ? `${topicHits} topic overlap${topicHits > 1 ? "s" : ""}` : null,
+        ].filter(Boolean) as string[]
+
+        if (reasons.length === 0) {
+          reasons.push("outside your usual orbit")
+        }
+
+        return {
+          id: `rec_${paper.id}`,
+          paper: getPublicPaper(paper),
+          score,
+          reasons,
+        }
+      })
+      .filter((entry) => entry.score > 0)
+      .sort((left, right) => right.score - left.score)
+      .slice(0, 5)
+  }
+
   async getDailyDigest(viewerHandle?: string | null): Promise<DailyDigest> {
     const state = await readDemoState()
     const viewer = await this.getViewer(viewerHandle)
     const feed = await this.getFeed({ viewerHandle })
     const trending = await this.listTrendingPapers({ viewerHandle, limit: 3 })
+    const recommendations = await this.getRecommendations(viewerHandle)
     const opportunities = await this.getOpportunities(viewerHandle)
 
     const insideOrbit = feed.slice(0, 3)
@@ -827,6 +969,15 @@ class DemoRepository implements PapersRepository {
           items: insideOrbit.map(
             (entry) => `${entry.paper.title} — ${entry.reasons.slice(0, 2).join(", ")}`,
           ),
+        },
+        {
+          id: "digest_network",
+          title: "From your network",
+          summary:
+            "Papers surfaced through follows, co-stars, and topic overlap with people you read.",
+          items: recommendations
+            .slice(0, 3)
+            .map((entry) => `${entry.paper.title} — ${entry.reasons.slice(0, 2).join(", ")}`),
         },
         {
           id: "digest_trending",
