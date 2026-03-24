@@ -1,6 +1,17 @@
 import { getPapersConfig } from "@papers/config"
 import { type ProviderTaskKind, type SafeAiPayload, safeAiPayloadSchema } from "@papers/contracts"
 
+const TASK_SYSTEM_PROMPTS: Record<ProviderTaskKind, string> = {
+  "tag-extraction":
+    "Extract 3-8 concise topic tags from the given research title and abstract. Return only a comma-separated list of lowercase tags. Never infer hidden identity. Example output: machine learning, evaluation, reproducibility",
+  "summary-refinement":
+    "Rewrite the given research abstract to be clearer and more concise while preserving the original meaning. Return only the improved abstract. Never infer hidden identity.",
+  "interest-explanation":
+    "Given a researcher's interests and a paper's topics, explain in 1-2 sentences why this paper is relevant to them. Be specific about the overlap. Never infer hidden identity.",
+  "opportunity-summary":
+    "Summarize this research opportunity in 1-2 sentences, highlighting what makes it distinctive and who would benefit most. Never infer hidden identity.",
+}
+
 export class GrokProvider {
   readonly #config = getPapersConfig()
 
@@ -28,6 +39,8 @@ export class GrokProvider {
       return ""
     }
 
+    const systemPrompt = TASK_SYSTEM_PROMPTS[task]
+
     const response = await fetch(`${this.#config.PAPERS_XAI_BASE_URL}/responses`, {
       method: "POST",
       headers: {
@@ -42,13 +55,13 @@ export class GrokProvider {
             content: [
               {
                 type: "input_text",
-                text: "Return concise structured text for a public research product. Never infer hidden identity.",
+                text: systemPrompt,
               },
             ],
           },
           {
             role: "user",
-            content: [{ type: "input_text", text: `${task}\n\n${text}` }],
+            content: [{ type: "input_text", text }],
           },
         ],
       }),

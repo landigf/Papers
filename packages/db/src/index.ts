@@ -139,6 +139,7 @@ export interface PapersRepository {
   ): Promise<DemoState["peerReviews"][number]>
   getDailyDigest(viewerHandle?: string | null): Promise<DailyDigest>
   getOpportunities(viewerHandle?: string | null): Promise<Opportunity[]>
+  listRelatedPapers(slug: string, limit?: number): Promise<FeedEntry[]>
 }
 
 async function getViewerHandle(viewerHandle?: string | null): Promise<string> {
@@ -252,6 +253,35 @@ function scoreTrendingPaper(paper: Paper, state: DemoState): FeedEntry {
         : "freshly published",
     ],
   }
+}
+
+function applyDiversityGuard(entries: FeedEntry[]): FeedEntry[] {
+  const maxConsecutiveSameAuthor = 2
+  const result: FeedEntry[] = []
+  const deferred: FeedEntry[] = []
+
+  for (const entry of entries) {
+    const authorHandle = entry.paper.publicAuthorProfile?.handle ?? null
+    const recentSameAuthor = result
+      .slice(-maxConsecutiveSameAuthor)
+      .filter(
+        (recent) =>
+          authorHandle !== null && recent.paper.publicAuthorProfile?.handle === authorHandle,
+      ).length
+
+    if (recentSameAuthor >= maxConsecutiveSameAuthor) {
+      deferred.push(entry)
+    } else {
+      result.push(entry)
+    }
+  }
+
+  return [...result, ...deferred]
+}
+
+function computeTopicOverlap(topicsA: Topic[], topicsB: Topic[]): number {
+  const slugsA = new Set(topicsA.map((topic) => topic.slug))
+  return topicsB.filter((topic) => slugsA.has(topic.slug)).length
 }
 
 function hydrateSubmission(
@@ -393,7 +423,7 @@ class DemoRepository implements PapersRepository {
     const viewer = await this.getViewer(input?.viewerHandle)
     const normalizedQuery = input?.query?.trim().toLowerCase()
 
-    return state.papers
+    const scored = state.papers
       .filter((paper) => {
         if (!normalizedQuery) {
           return true
@@ -405,6 +435,8 @@ class DemoRepository implements PapersRepository {
       })
       .map((paper) => scoreFeedPaper(paper, viewer, state))
       .sort((left, right) => right.score - left.score)
+
+    return applyDiversityGuard(scored)
   }
 
   async listTrendingPapers(input?: {
@@ -876,6 +908,47 @@ class DemoRepository implements PapersRepository {
     return state.opportunities
       .map((opportunity) => matchOpportunity(opportunity, viewer, state))
       .sort((left, right) => right.matchReasons.length - left.matchReasons.length)
+  }
+
+  async listRelatedPapers(slug: string, limit = 3): Promise<FeedEntry[]> {
+    const state = await readDemoState()
+    const sourcePaper = state.papers.find((paper) => paper.slug === slug || paper.id === slug)
+
+    if (!sourcePaper) {
+      return []
+    }
+
+    return state.papers
+      .filter((paper) => paper.id !== sourcePaper.id)
+      .map((paper) => {
+        const overlap = computeTopicOverlap(sourcePaper.topics, paper.topics)
+        const titleWords = sourcePaper.title.toLowerCase().split(/\s+/)
+        const abstractOverlap = titleWords.filter(
+          (word) => word.length > 4 && paper.abstract.toLowerCase().includes(word),
+        ).length
+
+        const score = overlap * 10 + abstractOverlap * 2 + paper.starCount
+        const reasons: string[] = []
+        if (overlap > 0) {
+          reasons.push(`${overlap} shared topic${overlap > 1 ? "s" : ""}`)
+        }
+        if (abstractOverlap > 0) {
+          reasons.push("keyword overlap in abstract")
+        }
+        if (paper.starCount > 0) {
+          reasons.push(`${paper.starCount} star${paper.starCount > 1 ? "s" : ""}`)
+        }
+
+        return {
+          id: `related_${paper.id}`,
+          paper: getPublicPaper(paper),
+          score,
+          reasons: reasons.length > 0 ? reasons : ["same research space"],
+        }
+      })
+      .filter((entry) => entry.score > 0)
+      .sort((left, right) => right.score - left.score)
+      .slice(0, limit)
   }
 }
 

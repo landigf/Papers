@@ -247,6 +247,30 @@ function createInitialState(): DemoState {
     interests: ["computational biology", "optimization", "scientific discovery", "collaboration"],
   })
 
+  const raj = createUser({
+    id: "user_raj",
+    email: "raj@papers.dev",
+    name: "Raj Patel",
+    handle: "raj-patel",
+    headline: "Reinforcement learning for science, not just games.",
+    bio: "Studying how RL-based experiment planning can speed up wet-lab iteration cycles. Previously at DeepMind.",
+    affiliation: "University of Cambridge",
+    interests: ["reinforcement learning", "experiment design", "scientific discovery", "agents"],
+    orcid: "0000-0002-8811-3456",
+    verified: true,
+  })
+
+  const lena = createUser({
+    id: "user_lena",
+    email: "lena@papers.dev",
+    name: "Lena Kowalski",
+    handle: "lena-k",
+    headline: "Making peer review a research problem instead of an afterthought.",
+    bio: "Working on review quality metrics, calibration models, and incentive design for open science. Believer in structured disagreement.",
+    affiliation: "Max Planck Institute",
+    interests: ["open review", "evaluation", "incentive design", "reproducibility"],
+  })
+
   const topics = {
     researchCollaboration: createTopic("research collaboration"),
     agents: createTopic("agents"),
@@ -256,6 +280,10 @@ function createInitialState(): DemoState {
     computationalBiology: createTopic("computational biology"),
     scientificDiscovery: createTopic("scientific discovery"),
     procurementAi: createTopic("procurement ai"),
+    reinforcementLearning: createTopic("reinforcement learning"),
+    experimentDesign: createTopic("experiment design"),
+    reproducibility: createTopic("reproducibility"),
+    incentiveDesign: createTopic("incentive design"),
   }
 
   const papers = [
@@ -319,6 +347,62 @@ function createInitialState(): DemoState {
       starCount: 3,
       followerCount: 0,
     }),
+    createPaper({
+      id: "paper_public_4",
+      owner: raj,
+      title: "RL-Guided Experiment Design: Letting the Agent Pick the Next Wet-Lab Run",
+      abstract:
+        "A framework for using reinforcement learning to prioritize experiments in biology and materials science, reducing wasted cycles and accelerating hypothesis refinement.",
+      bodyMarkdown:
+        "## Why RL for experiments\n\nTraditional experiment planning relies on researcher intuition and grid search. By framing each experiment as a step in an MDP, we can train policies that propose higher-value experiments earlier.\n\n## Setup\n\nWe model the experiment space as a contextual bandit with delayed rewards. The agent observes previous results and proposes the next assay or parameter sweep.\n\n## Early results\n\nOn simulated wet-lab benchmarks, RL-guided planning reduces the number of experiments needed to reach target accuracy by 35-40%.",
+      visibilityMode: "public",
+      topics: [topics.reinforcementLearning, topics.experimentDesign, topics.scientificDiscovery],
+      createdAt: "2026-03-23T11:20:00.000Z",
+      starCount: 6,
+      followerCount: 2,
+    }),
+    createPaper({
+      id: "paper_public_5",
+      owner: lena,
+      title: "Reviewer Calibration Is a Research Problem We Keep Ignoring",
+      abstract:
+        "An analysis of how uncalibrated reviewers distort conference outcomes and a proposal for lightweight calibration rounds that improve score consistency without adding reviewer burden.",
+      bodyMarkdown:
+        "## The calibration gap\n\nReviewers at the same conference routinely disagree on score meaning. A '3' from one reviewer is a '5' from another. This is a solvable problem.\n\n## Proposed fix\n\nBefore the main review phase, run a 15-minute calibration round where reviewers score 2-3 reference papers with known consensus ranges. Use the delta to adjust scores during aggregation.\n\n## Why this matters\n\nBetter calibration means fewer false rejections, less randomness in acceptance, and more trust in the review process.",
+      visibilityMode: "public",
+      topics: [topics.openReview, topics.evaluation, topics.incentiveDesign],
+      createdAt: "2026-03-23T08:45:00.000Z",
+      starCount: 11,
+      followerCount: 6,
+    }),
+    createPaper({
+      id: "paper_public_6",
+      owner: gennaro,
+      title: "Fuzzy Preference Aggregation for Multi-Stakeholder Research Prioritization",
+      abstract:
+        "A method for combining imprecise stakeholder preferences using fuzzy set theory to rank research directions when priorities conflict and data is incomplete.",
+      bodyMarkdown:
+        "## Problem\n\nResearch teams face prioritization decisions where stakeholders have vague, overlapping, and sometimes contradictory preferences. Classical voting and ranking methods break down.\n\n## Approach\n\nWe model each stakeholder's preference as a fuzzy membership function over candidate research directions, then aggregate using OWA operators that balance consensus and coverage.\n\n## Application\n\nTested on a simulated research lab with 5 PIs and 20 candidate projects. Fuzzy aggregation produced rankings that all PIs rated as 'fair' more often than majority voting or Borda count.",
+      visibilityMode: "public",
+      topics: [topics.fuzzyLogic, topics.researchCollaboration, topics.scientificDiscovery],
+      createdAt: "2026-03-22T20:00:00.000Z",
+      starCount: 4,
+      followerCount: 2,
+    }),
+    createPaper({
+      id: "paper_blind_2",
+      owner: raj,
+      title: "Reproducibility Debt in Agent Benchmarks: A Quantitative Audit",
+      abstract:
+        "A blind submission auditing 12 popular agent benchmarks for reproducibility gaps, finding that 7 out of 12 cannot be independently reproduced within one standard deviation of claimed performance.",
+      bodyMarkdown:
+        "## Audit methodology\n\nWe attempted to independently reproduce the headline results of 12 agent benchmarks published between 2024 and 2026, using only the artifacts and instructions provided in the original papers.\n\n## Findings\n\n7 of 12 benchmarks had reproducibility gaps exceeding 1 standard deviation. Common causes: undocumented hyperparameters, missing seed specifications, and reliance on deprecated API endpoints.\n\n## Recommendation\n\nBenchmark papers should include a reproducibility checklist and deposit frozen environments alongside their results.",
+      visibilityMode: "blind",
+      topics: [topics.agents, topics.evaluation, topics.reproducibility],
+      createdAt: "2026-03-23T06:00:00.000Z",
+      starCount: 8,
+      followerCount: 0,
+    }),
   ]
 
   function requirePaper(id: string): Paper {
@@ -354,6 +438,54 @@ function createInitialState(): DemoState {
       createdAt: "2026-03-23T11:00:00.000Z",
       isBlindSafe: true,
     },
+    {
+      id: "comment_4",
+      paperId: "paper_public_4",
+      authorProfile: amina.profile,
+      body: "The contextual bandit framing is clever. Have you considered how this transfers to domains where experiment cost varies by orders of magnitude?",
+      createdAt: "2026-03-23T12:30:00.000Z",
+      isBlindSafe: true,
+    },
+    {
+      id: "comment_5",
+      paperId: "paper_public_4",
+      authorProfile: gennaro.profile,
+      body: "This connects well to the fuzzy prioritization angle. If you model experiment value as a fuzzy quantity, the RL agent could handle uncertainty more gracefully.",
+      createdAt: "2026-03-23T13:00:00.000Z",
+      isBlindSafe: true,
+    },
+    {
+      id: "comment_6",
+      paperId: "paper_public_5",
+      authorProfile: maya.profile,
+      body: "The calibration round idea is exactly what conference organizers avoid because they think it adds friction. But 15 minutes up front could save hours of meta-review debates.",
+      createdAt: "2026-03-23T09:30:00.000Z",
+      isBlindSafe: true,
+    },
+    {
+      id: "comment_7",
+      paperId: "paper_public_5",
+      authorProfile: gennaro.profile,
+      body: "Would be great to see this integrated into Papers' own conference workflow as a calibration step before the main review opens.",
+      createdAt: "2026-03-23T10:00:00.000Z",
+      isBlindSafe: true,
+    },
+    {
+      id: "comment_8",
+      paperId: "paper_public_6",
+      authorProfile: raj.profile,
+      body: "The OWA operator choice is interesting. Does the fairness property hold when stakeholder preferences are adversarial rather than just vague?",
+      createdAt: "2026-03-23T00:15:00.000Z",
+      isBlindSafe: true,
+    },
+    {
+      id: "comment_9",
+      paperId: "paper_blind_2",
+      authorProfile: null,
+      body: "This audit is overdue. The missing seed specifications alone explain half the variance in agent leaderboards.",
+      createdAt: "2026-03-23T08:00:00.000Z",
+      isBlindSafe: true,
+    },
   ]
 
   const conferences = [
@@ -383,6 +515,20 @@ function createInitialState(): DemoState {
       submissionDeadline: "2026-03-15T23:59:00.000Z",
       reviewDeadline: "2026-03-30T23:59:00.000Z",
       topics: [topics.openReview, topics.agents, topics.evaluation],
+    }),
+    createConference({
+      id: "conf_repro_1",
+      name: "Reproducibility in AI Research 2026",
+      organizer: "Cambridge ML Society x Papers",
+      summary:
+        "A workshop track dedicated to reproducibility audits, benchmark reliability, and methods for making research artifacts independently verifiable.",
+      callForPapers:
+        "We welcome reproducibility case studies, negative results, benchmark audits, and tooling for experiment tracking. Both public and blind submissions accepted.",
+      status: "open",
+      submissionDeadline: "2026-04-15T23:59:00.000Z",
+      reviewDeadline: "2026-05-01T23:59:00.000Z",
+      featured: true,
+      topics: [topics.reproducibility, topics.evaluation, topics.agents],
     }),
   ]
 
@@ -416,6 +562,26 @@ function createInitialState(): DemoState {
       submittedAt: "2026-03-19T16:20:00.000Z",
       reviewCount: 1,
       averageScore: 5,
+    },
+    {
+      id: "submission_public_5",
+      conferenceId: "conf_open_1",
+      paperId: "paper_public_5",
+      paper: getPublicPaper(requirePaper("paper_public_5")),
+      status: "submitted",
+      submittedAt: "2026-03-23T09:00:00.000Z",
+      reviewCount: 0,
+      averageScore: null,
+    },
+    {
+      id: "submission_blind_2",
+      conferenceId: "conf_repro_1",
+      paperId: "paper_blind_2",
+      paper: getPublicPaper(requirePaper("paper_blind_2")),
+      status: "submitted",
+      submittedAt: "2026-03-23T07:00:00.000Z",
+      reviewCount: 0,
+      averageScore: null,
     },
   ]
 
@@ -495,6 +661,30 @@ function createInitialState(): DemoState {
       ],
       url: "https://example.org/opportunities/epfl-bio-systems",
     }),
+    createOpportunity({
+      id: "opp_4",
+      title: "Open call for papers on review calibration methods",
+      organization: "Max Planck Institute",
+      kind: "call_for_papers",
+      mode: "remote",
+      location: "Munich / remote",
+      summary:
+        "Seeking empirical studies and tooling proposals for improving peer review calibration in ML venues. Both positive and negative results welcome.",
+      topics: [topics.openReview, topics.evaluation, topics.incentiveDesign],
+      url: "https://example.org/opportunities/mpi-review-calibration",
+    }),
+    createOpportunity({
+      id: "opp_5",
+      title: "RL for scientific experimentation collaboration",
+      organization: "University of Cambridge",
+      kind: "collaboration",
+      mode: "hybrid",
+      location: "Cambridge",
+      summary:
+        "Looking for co-investigators to extend RL-based experiment planning to real wet-lab settings in chemistry and materials science.",
+      topics: [topics.reinforcementLearning, topics.experimentDesign, topics.scientificDiscovery],
+      url: "https://example.org/opportunities/cambridge-rl-experiments",
+    }),
   ]
 
   const papersWithCommentCounts = papers.map((paper) => ({
@@ -510,7 +700,7 @@ function createInitialState(): DemoState {
   }))
 
   return {
-    users: [gennaro, maya, amina],
+    users: [gennaro, maya, amina, raj, lena],
     papers: papersWithCommentCounts,
     comments,
     savedInterests: [
@@ -565,6 +755,24 @@ function createInitialState(): DemoState {
           id: "idea_opportunities",
           label: "Research opportunities",
           summary: "Visiting student, remote collaboration, and lab opportunity matching.",
+        },
+        {
+          id: "idea_calibration",
+          label: "Review calibration rounds",
+          summary:
+            "Pre-review calibration step where reviewers score reference papers to normalize scoring before the main review opens.",
+        },
+        {
+          id: "idea_reading_lists",
+          label: "Reading lists",
+          summary:
+            "Curated, shareable paper collections around themes, courses, or research questions.",
+        },
+        {
+          id: "idea_citation_graph",
+          label: "Citation graph",
+          summary:
+            "Visual map of how papers on the platform reference and build on each other, surfacing intellectual lineage.",
         },
       ],
     },
