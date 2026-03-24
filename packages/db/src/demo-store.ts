@@ -5,6 +5,8 @@ import type {
   Comment,
   Conference,
   ConferenceSubmission,
+  HousingListing,
+  HousingListingKind,
   Opportunity,
   Paper,
   PaperAsset,
@@ -29,6 +31,7 @@ export type DemoState = {
   submissions: ConferenceSubmission[]
   peerReviews: PeerReview[]
   opportunities: Opportunity[]
+  housingListings: HousingListing[]
 }
 
 function nowIso(): string {
@@ -206,6 +209,38 @@ function createOpportunity(input: {
     topics: input.topics,
     url: input.url ?? null,
     matchReasons: [],
+  }
+}
+
+function createHousingListing(input: {
+  id: string
+  title: string
+  kind: HousingListingKind
+  neighborhood: string
+  city: string
+  monthlyRentChf: number
+  availableFrom: string
+  availableUntil?: string | null
+  summary: string
+  rooms: number
+  furnished: boolean
+  url?: string | null
+  postedAt?: string
+}): HousingListing {
+  return {
+    id: input.id,
+    title: input.title,
+    kind: input.kind,
+    neighborhood: input.neighborhood,
+    city: input.city,
+    monthlyRentChf: input.monthlyRentChf,
+    availableFrom: input.availableFrom,
+    availableUntil: input.availableUntil ?? null,
+    summary: input.summary,
+    rooms: input.rooms,
+    furnished: input.furnished,
+    url: input.url ?? null,
+    postedAt: input.postedAt ?? nowIso(),
   }
 }
 
@@ -497,6 +532,89 @@ function createInitialState(): DemoState {
     }),
   ]
 
+  const housingListings = [
+    createHousingListing({
+      id: "housing_1",
+      title: "Bright 2.5-room apartment near ETH Zentrum",
+      kind: "apartment",
+      neighborhood: "Universitätstrasse",
+      city: "Zürich",
+      monthlyRentChf: 1850,
+      availableFrom: "2026-07-01",
+      availableUntil: null,
+      summary:
+        "Renovated apartment five minutes from ETH main building. Open kitchen, good natural light, shared laundry in the basement. Ideal for a researcher starting a new position.",
+      rooms: 2.5,
+      furnished: false,
+      url: "https://example.org/housing/eth-zentrum-2-5",
+      postedAt: "2026-03-20T10:00:00.000Z",
+    }),
+    createHousingListing({
+      id: "housing_2",
+      title: "Furnished sublet in Wiedikon — July to September",
+      kind: "sublet",
+      neighborhood: "Wiedikon",
+      city: "Zürich",
+      monthlyRentChf: 1400,
+      availableFrom: "2026-07-01",
+      availableUntil: "2026-09-30",
+      summary:
+        "A colleague is away for the summer. Fully furnished 1.5-room flat close to tram 9. Quiet street, good for focused work. Available July through end of September.",
+      rooms: 1.5,
+      furnished: true,
+      url: "https://example.org/housing/wiedikon-sublet-summer",
+      postedAt: "2026-03-18T14:30:00.000Z",
+    }),
+    createHousingListing({
+      id: "housing_3",
+      title: "Room in shared flat, Oerlikon — researchers preferred",
+      kind: "shared_flat",
+      neighborhood: "Oerlikon",
+      city: "Zürich",
+      monthlyRentChf: 980,
+      availableFrom: "2026-07-15",
+      availableUntil: null,
+      summary:
+        "Spacious room in a 4-person WG near the S-Bahn. Two current flatmates are PhD students. Shared kitchen and living room. Fast internet included.",
+      rooms: 1,
+      furnished: true,
+      url: "https://example.org/housing/oerlikon-wg-room",
+      postedAt: "2026-03-22T08:15:00.000Z",
+    }),
+    createHousingListing({
+      id: "housing_4",
+      title: "Studio in Höngg, walking distance to campus",
+      kind: "studio",
+      neighborhood: "Höngg",
+      city: "Zürich",
+      monthlyRentChf: 1250,
+      availableFrom: "2026-08-01",
+      availableUntil: null,
+      summary:
+        "Compact studio on the Hönggerberg side. 12 minutes on foot to the ETH campus there. Building has a shared bike storage and a quiet courtyard.",
+      rooms: 1,
+      furnished: false,
+      url: "https://example.org/housing/hoengg-studio",
+      postedAt: "2026-03-21T16:45:00.000Z",
+    }),
+    createHousingListing({
+      id: "housing_5",
+      title: "Temporary summer let near Zürich HB — Aug only",
+      kind: "temporary",
+      neighborhood: "Langstrasse",
+      city: "Zürich",
+      monthlyRentChf: 1600,
+      availableFrom: "2026-08-01",
+      availableUntil: "2026-08-31",
+      summary:
+        "One-month temporary rental near the main station. Good for someone still looking for permanent housing and needing a base. Furnished, all-inclusive price.",
+      rooms: 1.5,
+      furnished: true,
+      url: "https://example.org/housing/hb-temp-august",
+      postedAt: "2026-03-23T11:00:00.000Z",
+    }),
+  ]
+
   const papersWithCommentCounts = papers.map((paper) => ({
     ...paper,
     commentCount: comments.filter((comment) => comment.paperId === paper.id).length,
@@ -572,6 +690,7 @@ function createInitialState(): DemoState {
     submissions,
     peerReviews,
     opportunities,
+    housingListings,
   }
 }
 
@@ -609,6 +728,9 @@ export async function readDemoState(): Promise<DemoState> {
       opportunities: Array.isArray(parsed.opportunities)
         ? parsed.opportunities
         : initial.opportunities,
+      housingListings: Array.isArray(parsed.housingListings)
+        ? parsed.housingListings
+        : initial.housingListings,
     }
     await writeFile(filePath, JSON.stringify(normalized, null, 2))
     return normalized

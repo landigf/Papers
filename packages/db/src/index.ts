@@ -14,6 +14,7 @@ import {
   type DailyDigest,
   dailyDigestSchema,
   type FeedEntry,
+  type HousingListing,
   type Opportunity,
   type Paper,
   type Profile,
@@ -139,6 +140,10 @@ export interface PapersRepository {
   ): Promise<DemoState["peerReviews"][number]>
   getDailyDigest(viewerHandle?: string | null): Promise<DailyDigest>
   getOpportunities(viewerHandle?: string | null): Promise<Opportunity[]>
+  getHousingListings(input?: {
+    availableBy?: string | null
+    maxRentChf?: number | null
+  }): Promise<HousingListing[]>
 }
 
 async function getViewerHandle(viewerHandle?: string | null): Promise<string> {
@@ -876,6 +881,29 @@ class DemoRepository implements PapersRepository {
     return state.opportunities
       .map((opportunity) => matchOpportunity(opportunity, viewer, state))
       .sort((left, right) => right.matchReasons.length - left.matchReasons.length)
+  }
+
+  async getHousingListings(input?: {
+    availableBy?: string | null
+    maxRentChf?: number | null
+  }): Promise<HousingListing[]> {
+    const state = await readDemoState()
+
+    return state.housingListings
+      .filter((listing) => {
+        if (input?.availableBy) {
+          if (listing.availableFrom > input.availableBy) {
+            return false
+          }
+        }
+        if (input?.maxRentChf != null) {
+          if (listing.monthlyRentChf > input.maxRentChf) {
+            return false
+          }
+        }
+        return true
+      })
+      .sort((left, right) => left.monthlyRentChf - right.monthlyRentChf)
   }
 }
 

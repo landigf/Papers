@@ -286,6 +286,32 @@ export const opportunitySchema = z.object({
 })
 export type Opportunity = z.infer<typeof opportunitySchema>
 
+export const housingListingKindSchema = z.enum([
+  "apartment",
+  "shared_flat",
+  "studio",
+  "sublet",
+  "temporary",
+])
+export type HousingListingKind = z.infer<typeof housingListingKindSchema>
+
+export const housingListingSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  kind: housingListingKindSchema,
+  neighborhood: z.string(),
+  city: z.string(),
+  monthlyRentChf: z.number().int().nonnegative(),
+  availableFrom: z.string(),
+  availableUntil: z.string().nullable(),
+  summary: z.string(),
+  rooms: z.number().nonnegative(),
+  furnished: z.boolean(),
+  url: z.string().nullable(),
+  postedAt: z.string(),
+})
+export type HousingListing = z.infer<typeof housingListingSchema>
+
 export const dailyDigestSectionSchema = z.object({
   id: z.string(),
   title: z.string(),
