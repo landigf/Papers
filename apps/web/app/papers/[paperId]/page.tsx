@@ -2,6 +2,7 @@ import { createRepository } from "@papers/db"
 import { ActionButton, Pill, SectionCard } from "@papers/ui"
 import { notFound } from "next/navigation"
 import { ConferenceCard } from "../../../components/conference-card"
+import { getPublicFileUrl } from "../../../lib/storage"
 import { getViewerHandleFromCookies } from "../../../lib/viewer"
 import { createCommentAction, toggleStarAction } from "../../actions"
 
@@ -55,6 +56,30 @@ export default async function PaperPage({ params }: { params: Promise<{ paperId:
             ))}
           </article>
         </SectionCard>
+
+        {detail.paper.assets.length > 0 && (
+          <SectionCard eyebrow="PDF" title="Full paper">
+            {detail.paper.assets
+              .filter((asset) => asset.mimeType === "application/pdf")
+              .map((asset) => (
+                <div key={asset.id} style={{ marginBottom: "1rem" }}>
+                  <p className="field-note" style={{ marginBottom: "0.5rem" }}>
+                    {asset.fileName} ({Math.round(asset.fileSizeBytes / 1024)} KB)
+                  </p>
+                  <iframe
+                    src={getPublicFileUrl(asset.storageKey)}
+                    style={{
+                      width: "100%",
+                      height: "80vh",
+                      border: "1px solid var(--color-border, #ddd)",
+                      borderRadius: "4px",
+                    }}
+                    title={`PDF: ${asset.fileName}`}
+                  />
+                </div>
+              ))}
+          </SectionCard>
+        )}
 
         <SectionCard eyebrow="Discussion" title={`Comments (${detail.comments.length})`}>
           <form action={createCommentAction} className="stacked-form">

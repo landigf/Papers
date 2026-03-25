@@ -149,7 +149,11 @@ export interface PapersRepository {
   listTrendingPapers(input?: { viewerHandle?: string | null; limit?: number }): Promise<FeedEntry[]>
   getPaperBySlug(slug: string, viewerHandle?: string | null): Promise<PaperDetail | null>
   getProfileByHandle(handle: string, viewerHandle?: string | null): Promise<ProfileDetail | null>
-  createPaper(input: CreatePaperInput, viewerHandle?: string | null): Promise<PublicPaper>
+  createPaper(
+    input: CreatePaperInput,
+    viewerHandle?: string | null,
+    asset?: { storageKey: string; fileName: string; mimeType: string; fileSizeBytes: number },
+  ): Promise<PublicPaper>
   createComment(input: CreateCommentInput, viewerHandle?: string | null): Promise<Comment>
   toggleFollow(handle: string, viewerHandle?: string | null): Promise<boolean>
   toggleStar(slug: string, viewerHandle?: string | null): Promise<boolean>
@@ -512,7 +516,11 @@ class DemoRepository implements PapersRepository {
     }
   }
 
-  async createPaper(input: CreatePaperInput, viewerHandle?: string | null): Promise<PublicPaper> {
+  async createPaper(
+    input: CreatePaperInput,
+    viewerHandle?: string | null,
+    asset?: { storageKey: string; fileName: string; mimeType: string; fileSizeBytes: number },
+  ): Promise<PublicPaper> {
     const parsed = createPaperInputSchema.parse(input)
     const state = await readDemoState()
     const viewer = await this.getViewer(viewerHandle)
@@ -548,9 +556,25 @@ class DemoRepository implements PapersRepository {
         bodyMarkdown: parsed.bodyMarkdown,
         createdAt,
       },
-      assets: [],
+      assets: asset
+        ? [
+            {
+              id: randomUUID(),
+              paperId: "",
+              storageKey: asset.storageKey,
+              fileName: asset.fileName,
+              mimeType: asset.mimeType,
+              fileSizeBytes: asset.fileSizeBytes,
+              uploadedAt: createdAt,
+              isMetadataScrubbed: false,
+            },
+          ]
+        : [],
     }
     paper.latestVersion.paperId = paper.id
+    for (const a of paper.assets) {
+      a.paperId = paper.id
+    }
 
     state.papers.unshift(paper)
     await writeDemoState(state)
