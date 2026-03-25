@@ -332,7 +332,21 @@ export const researchOpportunities = pgTable(
     location: text("location").notNull(),
     summary: text("summary").notNull(),
     url: text("url"),
+    postedById: text("posted_by_id").references(() => authUsers.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [index("research_opportunity_kind_idx").on(table.kind)],
+)
+
+export const opportunityTopics = pgTable(
+  "opportunity_topic",
+  {
+    opportunityId: text("opportunity_id")
+      .notNull()
+      .references(() => researchOpportunities.id, { onDelete: "cascade" }),
+    topicId: text("topic_id")
+      .notNull()
+      .references(() => topics.id, { onDelete: "cascade" }),
+  },
+  (table) => [primaryKey({ columns: [table.opportunityId, table.topicId] })],
 )

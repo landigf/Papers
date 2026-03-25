@@ -194,6 +194,7 @@ function createOpportunity(input: {
   summary: string
   topics: Topic[]
   url?: string | null
+  postedByProfile?: Profile | null
 }): Opportunity {
   return {
     id: input.id,
@@ -205,6 +206,7 @@ function createOpportunity(input: {
     summary: input.summary,
     topics: input.topics,
     url: input.url ?? null,
+    postedByProfile: input.postedByProfile ?? null,
     matchReasons: [],
   }
 }
@@ -466,6 +468,7 @@ function createInitialState(): DemoState {
         "A part-time visiting-student style collaboration around agent reliability, eval traces, and reproducible research tooling.",
       topics: [topics.agents, topics.evaluation, topics.researchCollaboration],
       url: "https://example.org/opportunities/mit-agent-reliability",
+      postedByProfile: maya.profile,
     }),
     createOpportunity({
       id: "opp_2",
@@ -478,6 +481,7 @@ function createInitialState(): DemoState {
         "Looking for researchers who can connect fuzzy decision models, procurement workflows, and interpretable recommendation systems.",
       topics: [topics.fuzzyLogic, topics.procurementAi, topics.scientificDiscovery],
       url: "https://example.org/opportunities/fuzzy-systems-call",
+      postedByProfile: gennaro.profile,
     }),
     createOpportunity({
       id: "opp_3",
@@ -494,6 +498,45 @@ function createInitialState(): DemoState {
         topics.researchCollaboration,
       ],
       url: "https://example.org/opportunities/epfl-bio-systems",
+      postedByProfile: amina.profile,
+    }),
+    createOpportunity({
+      id: "opp_4",
+      title: "Postdoctoral researcher in ML systems evaluation",
+      organization: "MIT CSAIL",
+      kind: "open_position",
+      mode: "onsite",
+      location: "Cambridge, MA",
+      summary:
+        "Full-time postdoc position focused on building evaluation frameworks for large-scale ML systems. Strong publication record in systems or ML expected.",
+      topics: [topics.evaluation, topics.agents],
+      url: "https://example.org/opportunities/mit-postdoc-ml",
+      postedByProfile: maya.profile,
+    }),
+    createOpportunity({
+      id: "opp_5",
+      title: "Visiting researcher in scientific collaboration tools",
+      organization: "ETH Zurich",
+      kind: "visiting_researcher",
+      mode: "hybrid",
+      location: "Zurich",
+      summary:
+        "3–6 month visiting researcher slot for someone working on tooling that makes cross-lab collaboration more productive. Open to remote collaboration with periodic on-site visits.",
+      topics: [topics.researchCollaboration, topics.scientificDiscovery],
+      url: "https://example.org/opportunities/eth-visiting",
+      postedByProfile: gennaro.profile,
+    }),
+    createOpportunity({
+      id: "opp_6",
+      title: "Collaboration request: interpretable biology pipelines",
+      organization: "EPFL + University of Geneva",
+      kind: "collaboration",
+      mode: "remote",
+      location: "Geneva / remote",
+      summary:
+        "Seeking collaborators with optimization or ML interpretability expertise to co-develop transparent computational biology pipelines.",
+      topics: [topics.computationalBiology, topics.scientificDiscovery],
+      postedByProfile: amina.profile,
     }),
   ]
 
@@ -607,7 +650,10 @@ export async function readDemoState(): Promise<DemoState> {
       submissions: Array.isArray(parsed.submissions) ? parsed.submissions : initial.submissions,
       peerReviews: Array.isArray(parsed.peerReviews) ? parsed.peerReviews : initial.peerReviews,
       opportunities: Array.isArray(parsed.opportunities)
-        ? parsed.opportunities
+        ? parsed.opportunities.map((opp) => ({
+            ...opp,
+            postedByProfile: opp.postedByProfile ?? null,
+          }))
         : initial.opportunities,
     }
     await writeFile(filePath, JSON.stringify(normalized, null, 2))

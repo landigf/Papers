@@ -5,10 +5,12 @@ import {
   type Conference,
   type ConferenceSubmission,
   type CreateCommentInput,
+  type CreateOpportunityInput,
   type CreatePaperInput,
   type CreatePeerReviewInput,
   conferenceSubmissionSchema,
   createCommentInputSchema,
+  createOpportunityInputSchema,
   createPaperInputSchema,
   createPeerReviewInputSchema,
   type DailyDigest,
@@ -47,6 +49,7 @@ import {
   conferenceTopics,
   follows,
   moderationFlags,
+  opportunityTopics,
   paperAssets,
   papers,
   paperTopics,
@@ -70,6 +73,7 @@ export {
   conferenceTopics,
   follows,
   moderationFlags,
+  opportunityTopics,
   paperAssets,
   papers,
   paperTopics,
@@ -138,7 +142,14 @@ export interface PapersRepository {
     viewerHandle?: string | null,
   ): Promise<DemoState["peerReviews"][number]>
   getDailyDigest(viewerHandle?: string | null): Promise<DailyDigest>
-  getOpportunities(viewerHandle?: string | null): Promise<Opportunity[]>
+  getOpportunities(
+    viewerHandle?: string | null,
+    filters?: { kind?: string | null; mode?: string | null; location?: string | null },
+  ): Promise<Opportunity[]>
+  createOpportunity(
+    input: CreateOpportunityInput,
+    viewerHandle?: string | null,
+  ): Promise<Opportunity>
 }
 
 async function getViewerHandle(viewerHandle?: string | null): Promise<string> {
@@ -869,13 +880,66 @@ class DemoRepository implements PapersRepository {
     })
   }
 
-  async getOpportunities(viewerHandle?: string | null): Promise<Opportunity[]> {
+  async getOpportunities(
+    viewerHandle?: string | null,
+    filters?: { kind?: string | null; mode?: string | null; location?: string | null },
+  ): Promise<Opportunity[]> {
     const state = await readDemoState()
     const viewer = await this.getViewer(viewerHandle)
 
+    const normalizedKind = filters?.kind?.trim().toLowerCase() || null
+    const normalizedMode = filters?.mode?.trim().toLowerCase() || null
+    const normalizedLocation = filters?.location?.trim().toLowerCase() || null
+
     return state.opportunities
+      .filter((opportunity) => {
+        if (normalizedKind && opportunity.kind !== normalizedKind) return false
+        if (normalizedMode && opportunity.mode !== normalizedMode) return false
+        if (
+          normalizedLocation &&
+          !opportunity.location.toLowerCase().includes(normalizedLocation)
+        ) {
+          return false
+        }
+        return true
+      })
       .map((opportunity) => matchOpportunity(opportunity, viewer, state))
       .sort((left, right) => right.matchReasons.length - left.matchReasons.length)
+  }
+
+  async createOpportunity(
+    input: CreateOpportunityInput,
+    viewerHandle?: string | null,
+  ): Promise<Opportunity> {
+    const parsed = createOpportunityInputSchema.parse(input)
+    const state = await readDemoState()
+    const viewer = await this.getViewer(viewerHandle)
+
+    if (!viewer) {
+      throw new Error("A viewer is required to post an opportunity.")
+    }
+
+    const opportunity: Opportunity = {
+      id: randomUUID(),
+      title: parsed.title,
+      organization: parsed.organization,
+      kind: parsed.kind,
+      mode: parsed.mode,
+      location: parsed.location,
+      summary: parsed.summary,
+      topics: parsed.topicLabels.map((label) => ({
+        id: `topic_${slugify(label)}`,
+        label,
+        slug: slugify(label),
+      })),
+      url: parsed.url ?? null,
+      postedByProfile: viewer.profile,
+      matchReasons: [],
+    }
+
+    state.opportunities.unshift(opportunity)
+    await writeDemoState(state)
+    return opportunity
   }
 }
 

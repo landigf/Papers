@@ -266,6 +266,8 @@ export const opportunityKindSchema = z.enum([
   "internship",
   "collaboration",
   "call_for_papers",
+  "open_position",
+  "visiting_researcher",
 ])
 export type OpportunityKind = z.infer<typeof opportunityKindSchema>
 
@@ -282,6 +284,7 @@ export const opportunitySchema = z.object({
   summary: z.string(),
   topics: z.array(topicSchema),
   url: z.string().nullable(),
+  postedByProfile: profileSchema.nullable(),
   matchReasons: z.array(z.string()),
 })
 export type Opportunity = z.infer<typeof opportunitySchema>
@@ -340,6 +343,18 @@ export const submitPaperToConferenceInputSchema = z.object({
   paperSlug: z.string().min(1),
 })
 export type SubmitPaperToConferenceInput = z.infer<typeof submitPaperToConferenceInputSchema>
+
+export const createOpportunityInputSchema = z.object({
+  title: z.string().min(8).max(200),
+  organization: z.string().min(2).max(160),
+  kind: opportunityKindSchema,
+  mode: opportunityModeSchema,
+  location: z.string().min(2).max(120),
+  summary: z.string().min(20).max(2000),
+  topicLabels: z.array(z.string()).max(8),
+  url: z.string().max(500).nullable(),
+})
+export type CreateOpportunityInput = z.infer<typeof createOpportunityInputSchema>
 
 export const createPeerReviewInputSchema = z.object({
   conferenceSlug: z.string().min(1),

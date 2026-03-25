@@ -192,6 +192,40 @@ export async function submitPaperToConferenceAction(formData: FormData) {
   redirect(`/conferences/${conferenceSlug}`)
 }
 
+export async function createOpportunityAction(formData: FormData) {
+  const topicLabels = String(formData.get("topicLabels") ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean)
+  const rawUrl = String(formData.get("url") ?? "").trim()
+
+  await repository.createOpportunity(
+    {
+      title: String(formData.get("title") ?? ""),
+      organization: String(formData.get("organization") ?? ""),
+      kind: String(formData.get("kind") ?? "collaboration") as
+        | "visiting_student"
+        | "internship"
+        | "collaboration"
+        | "call_for_papers"
+        | "open_position"
+        | "visiting_researcher",
+      mode: String(formData.get("mode") ?? "remote") as "remote" | "onsite" | "hybrid",
+      location: String(formData.get("location") ?? ""),
+      summary: String(formData.get("summary") ?? ""),
+      topicLabels,
+      url: rawUrl || null,
+    },
+    await getViewerHandle(),
+  )
+
+  revalidatePath("/")
+  revalidatePath("/feed")
+  revalidatePath("/digest")
+  revalidatePath("/opportunities")
+  redirect("/opportunities")
+}
+
 export async function createPeerReviewAction(formData: FormData) {
   const conferenceSlug = String(formData.get("conferenceSlug") ?? "")
   await repository.createPeerReview(
