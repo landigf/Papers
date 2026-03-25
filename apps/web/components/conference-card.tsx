@@ -9,20 +9,22 @@ export function ConferenceCard({ conference }: { conference: Conference }) {
       title={conference.name}
     >
       <p>{conference.summary}</p>
-      <div className="pill-row">
-        <Pill>{conference.status.replaceAll("_", " ")}</Pill>
-        <Pill>{conference.submissionCount} submissions</Pill>
-        <Pill>{conference.reviewCount} reviews</Pill>
+      <div className="inline-stats">
+        <span>{conference.status.replaceAll("_", " ")}</span>
+        <span>{conference.submissionCount} submissions</span>
+        <span>{conference.reviewCount} reviews</span>
       </div>
-      <p className="muted-copy">
-        Submission deadline {conference.submissionDeadline.slice(0, 10)}. Review deadline{" "}
-        {conference.reviewDeadline.slice(0, 10)}.
+      <p className="field-note">
+        Deadline {conference.submissionDeadline.slice(0, 10)} · Review by{" "}
+        {conference.reviewDeadline.slice(0, 10)}
       </p>
-      <div className="pill-row">
-        {conference.topics.map((topic) => (
-          <Pill key={topic.id}>{topic.label}</Pill>
-        ))}
-      </div>
+      {conference.topics.length > 0 && (
+        <div className="pill-row">
+          {conference.topics.map((topic) => (
+            <Pill key={topic.id}>{topic.label}</Pill>
+          ))}
+        </div>
+      )}
       <Link className="ghost-link" href={`/conferences/${conference.slug}`}>
         Open conference
       </Link>

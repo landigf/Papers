@@ -1,0 +1,30 @@
+▲ Next.js 16.2.1
+- Local:         http://localhost:3000
+- Network:       http://172.31.0.208:3000
+✓ Ready in 115ms
+⚠ "next start" does not work with "output: standalone" configuration. Use "node .next/standalone/server.js" instead.
+▲ Next.js 16.2.1
+- Local:         http://localhost:3000
+- Network:       http://172.31.0.208:3000
+✓ Ready in 107ms
+⚠ "next start" does not work with "output: standalone" configuration. Use "node .next/standalone/server.js" instead.
+▲ Next.js 16.2.1
+- Local:         http://localhost:3000
+- Network:       http://172.31.0.208:3000
+✓ Ready in 65ms
+⚠ "next start" does not work with "output: standalone" configuration. Use "node .next/standalone/server.js" instead.
+▲ Next.js 16.2.1
+- Local:         http://localhost:3000
+- Network:       http://172.31.0.208:3000
+✓ Ready in 147ms
+⚠ "next start" does not work with "output: standalone" configuration. Use "node .next/standalone/server.js" instead.
+▲ Next.js 16.2.1
+- Local:         http://localhost:3000
+- Network:       http://172.31.0.208:3000
+✓ Ready in 73ms
+⚠ "next start" does not work with "output: standalone" configuration. Use "node .next/standalone/server.js" instead.
+▲ Next.js 16.2.1
+- Local:         http://localhost:3000
+- Network:       http://172.31.0.208:3000
+✓ Ready in 67ms
+⚠ "next start" does not work with "output: standalone" configuration. Use "node .next/standalone/server.js" instead.

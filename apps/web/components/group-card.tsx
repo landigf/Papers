@@ -9,16 +9,18 @@ export function GroupCard({ group }: { group: Group }) {
       title={group.name}
     >
       <p>{group.description}</p>
-      <div className="pill-row">
-        <Pill>{group.memberCount} members</Pill>
-        <Pill>{group.paperCount} papers</Pill>
-        <Pill>{group.announcementCount} announcements</Pill>
+      <div className="inline-stats">
+        <span>{group.memberCount} members</span>
+        <span>{group.paperCount} papers</span>
+        <span>{group.announcementCount} announcements</span>
       </div>
-      <div className="pill-row">
-        {group.topics.map((topic) => (
-          <Pill key={topic.id}>{topic.label}</Pill>
-        ))}
-      </div>
+      {group.topics.length > 0 && (
+        <div className="pill-row">
+          {group.topics.map((topic) => (
+            <Pill key={topic.id}>{topic.label}</Pill>
+          ))}
+        </div>
+      )}
       <Link className="ghost-link" href={`/groups/${group.slug}`}>
         Open group
       </Link>

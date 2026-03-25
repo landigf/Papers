@@ -23,20 +23,22 @@ export default async function ConferencePage(props: { params: Promise<{ conferen
         <SectionCard eyebrow="Conference" title={detail.conference.name}>
           <p>{detail.conference.summary}</p>
           <p>{detail.conference.callForPapers}</p>
-          <div className="pill-row">
-            <Pill>{detail.conference.status}</Pill>
-            <Pill>{detail.conference.submissionCount} submissions</Pill>
-            <Pill>{detail.conference.reviewCount} reviews</Pill>
+          <div className="inline-stats">
+            <span>{detail.conference.status}</span>
+            <span>{detail.conference.submissionCount} submissions</span>
+            <span>{detail.conference.reviewCount} reviews</span>
           </div>
-          <div className="pill-row">
-            {detail.conference.topics.map((topic) => (
-              <Pill key={topic.id}>{topic.label}</Pill>
-            ))}
-          </div>
-          <p className="muted-copy">
-            Submission deadline {detail.conference.submissionDeadline.slice(0, 10)}. Review deadline{" "}
-            {detail.conference.reviewDeadline.slice(0, 10)}.
+          <p className="field-note">
+            Deadline {detail.conference.submissionDeadline.slice(0, 10)} · Review by{" "}
+            {detail.conference.reviewDeadline.slice(0, 10)}
           </p>
+          {detail.conference.topics.length > 0 && (
+            <div className="pill-row">
+              {detail.conference.topics.map((topic) => (
+                <Pill key={topic.id}>{topic.label}</Pill>
+              ))}
+            </div>
+          )}
         </SectionCard>
 
         {detail.viewerPapers.length > 0 && detail.conference.status === "open" ? (
@@ -74,12 +76,12 @@ export default async function ConferencePage(props: { params: Promise<{ conferen
                         : (submission.paper.publicAuthorProfile?.displayName ?? "Public paper")}
                     </p>
                   </div>
-                  <div className="pill-row">
-                    <Pill>{submission.status.replaceAll("_", " ")}</Pill>
-                    <Pill>
+                  <div className="inline-stats">
+                    <span>{submission.status.replaceAll("_", " ")}</span>
+                    <span>
                       {submission.averageScore ? `avg ${submission.averageScore}` : "no score yet"}
-                    </Pill>
-                    <Pill>{submission.reviewCount} reviews</Pill>
+                    </span>
+                    <span>{submission.reviewCount} reviews</span>
                   </div>
                 </div>
                 <p>{submission.paper.abstract}</p>

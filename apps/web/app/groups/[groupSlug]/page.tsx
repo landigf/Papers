@@ -40,13 +40,17 @@ export default async function GroupDetailPage({
           title={group.name}
         >
           <p>{group.description}</p>
-          <div className="pill-row">
-            <Pill>{group.memberCount} members</Pill>
-            <Pill>{group.paperCount} papers</Pill>
-            {group.topics.map((topic) => (
-              <Pill key={topic.id}>{topic.label}</Pill>
-            ))}
+          <div className="inline-stats">
+            <span>{group.memberCount} members</span>
+            <span>{group.paperCount} papers</span>
           </div>
+          {group.topics.length > 0 && (
+            <div className="pill-row">
+              {group.topics.map((topic) => (
+                <Pill key={topic.id}>{topic.label}</Pill>
+              ))}
+            </div>
+          )}
           {viewerHandle && !group.isViewerMember && group.visibility === "public" && (
             <form action={toggleGroupMembershipAction}>
               <input name="groupSlug" type="hidden" value={group.slug} />

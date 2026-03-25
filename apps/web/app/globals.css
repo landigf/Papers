@@ -194,7 +194,6 @@ select {
 }
 
 .hero-actions,
-.pill-row,
 .feed-card-meta,
 .paper-meta {
   display: flex;
@@ -301,12 +300,34 @@ select {
 .pill {
   display: inline-flex;
   align-items: center;
-  padding: 4px 12px;
-  border-radius: 14px;
-  background: var(--accent-light);
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: transparent;
   color: var(--accent);
-  font-size: 0.78rem;
-  font-weight: 600;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border: 1px solid var(--border);
+}
+
+.pill-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Inline stats — plain text, no boxes */
+.inline-stats {
+  display: flex;
+  gap: 12px;
+  font-size: 0.82rem;
+  color: var(--dim);
+}
+
+.inline-stats span {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
 }
 
 /* ========== Feed Card (LinkedIn post style) ========== */
