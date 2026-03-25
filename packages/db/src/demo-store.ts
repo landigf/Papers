@@ -5,6 +5,7 @@ import type {
   Comment,
   Conference,
   ConferenceSubmission,
+  Notification,
   Opportunity,
   Paper,
   PaperAsset,
@@ -29,6 +30,7 @@ export type DemoState = {
   submissions: ConferenceSubmission[]
   peerReviews: PeerReview[]
   opportunities: Opportunity[]
+  notifications: Notification[]
 }
 
 function nowIso(): string {
@@ -497,6 +499,65 @@ function createInitialState(): DemoState {
     }),
   ]
 
+  const notifications: Notification[] = [
+    {
+      id: "notif_1",
+      recipientId: gennaro.id,
+      kind: "new_follower",
+      title: "New follower",
+      body: "Maya Chen started following you.",
+      linkHref: "/u/maya-chen",
+      actorProfile: maya.profile,
+      isRead: false,
+      createdAt: "2026-03-23T11:30:00.000Z",
+    },
+    {
+      id: "notif_2",
+      recipientId: gennaro.id,
+      kind: "comment",
+      title: "New comment on your paper",
+      body: 'Maya Chen commented on "Research Should Feel Collaborative Before It Feels Official".',
+      linkHref: "/papers/research-should-feel-collaborative-before-it-feels-official",
+      actorProfile: maya.profile,
+      isRead: false,
+      createdAt: "2026-03-23T10:15:00.000Z",
+    },
+    {
+      id: "notif_3",
+      recipientId: gennaro.id,
+      kind: "peer_review_received",
+      title: "New peer review",
+      body: 'Amina El-Sayed reviewed a submission in "Blind Review Challenge 2026".',
+      linkHref: "/conferences/blind-review-challenge-2026",
+      actorProfile: amina.profile,
+      isRead: true,
+      createdAt: "2026-03-22T22:40:00.000Z",
+    },
+    {
+      id: "notif_4",
+      recipientId: gennaro.id,
+      kind: "paper_starred",
+      title: "Paper starred",
+      body: 'Amina El-Sayed starred "Research Should Feel Collaborative Before It Feels Official".',
+      linkHref: "/papers/research-should-feel-collaborative-before-it-feels-official",
+      actorProfile: amina.profile,
+      isRead: true,
+      createdAt: "2026-03-22T16:00:00.000Z",
+    },
+    {
+      id: "notif_5",
+      recipientId: maya.id,
+      kind: "comment",
+      title: "New comment on your paper",
+      body: 'Gennaro Landi commented on "Evaluation Traces for Agentic Systems Without Turning Reviews Into Guesswork".',
+      linkHref:
+        "/papers/evaluation-traces-for-agentic-systems-without-turning-reviews-into-guesswork",
+      actorProfile: gennaro.profile,
+      isRead: false,
+      createdAt: "2026-03-23T10:48:00.000Z",
+    },
+  ]
+
   const papersWithCommentCounts = papers.map((paper) => ({
     ...paper,
     commentCount: comments.filter((comment) => comment.paperId === paper.id).length,
@@ -572,6 +633,7 @@ function createInitialState(): DemoState {
     submissions,
     peerReviews,
     opportunities,
+    notifications,
   }
 }
 
@@ -609,6 +671,9 @@ export async function readDemoState(): Promise<DemoState> {
       opportunities: Array.isArray(parsed.opportunities)
         ? parsed.opportunities
         : initial.opportunities,
+      notifications: Array.isArray(parsed.notifications)
+        ? parsed.notifications
+        : initial.notifications,
     }
     await writeFile(filePath, JSON.stringify(normalized, null, 2))
     return normalized

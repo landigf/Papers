@@ -14,6 +14,8 @@ import {
   type DailyDigest,
   dailyDigestSchema,
   type FeedEntry,
+  type Notification,
+  type NotificationKind,
   type Opportunity,
   type Paper,
   type Profile,
@@ -47,6 +49,7 @@ import {
   conferenceTopics,
   follows,
   moderationFlags,
+  notifications,
   paperAssets,
   papers,
   paperTopics,
@@ -70,6 +73,7 @@ export {
   conferenceTopics,
   follows,
   moderationFlags,
+  notifications,
   paperAssets,
   papers,
   paperTopics,
@@ -139,6 +143,17 @@ export interface PapersRepository {
   ): Promise<DemoState["peerReviews"][number]>
   getDailyDigest(viewerHandle?: string | null): Promise<DailyDigest>
   getOpportunities(viewerHandle?: string | null): Promise<Opportunity[]>
+  getNotifications(viewerHandle?: string | null): Promise<Notification[]>
+  getUnreadNotificationCount(viewerHandle?: string | null): Promise<number>
+  markNotificationsRead(viewerHandle?: string | null): Promise<void>
+  createNotification(input: {
+    recipientId: string
+    kind: NotificationKind
+    title: string
+    body: string
+    linkHref: string | null
+    actorProfile: Profile | null
+  }): Promise<Notification>
 }
 
 async function getViewerHandle(viewerHandle?: string | null): Promise<string> {
@@ -876,6 +891,72 @@ class DemoRepository implements PapersRepository {
     return state.opportunities
       .map((opportunity) => matchOpportunity(opportunity, viewer, state))
       .sort((left, right) => right.matchReasons.length - left.matchReasons.length)
+  }
+
+  async getNotifications(viewerHandle?: string | null): Promise<Notification[]> {
+    const state = await readDemoState()
+    const viewer = await this.getViewer(viewerHandle)
+    if (!viewer) {
+      return []
+    }
+
+    return state.notifications
+      .filter((notification) => notification.recipientId === viewer.id)
+      .sort(
+        (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
+      )
+  }
+
+  async getUnreadNotificationCount(viewerHandle?: string | null): Promise<number> {
+    const state = await readDemoState()
+    const viewer = await this.getViewer(viewerHandle)
+    if (!viewer) {
+      return 0
+    }
+
+    return state.notifications.filter(
+      (notification) => notification.recipientId === viewer.id && !notification.isRead,
+    ).length
+  }
+
+  async markNotificationsRead(viewerHandle?: string | null): Promise<void> {
+    const state = await readDemoState()
+    const viewer = await this.getViewer(viewerHandle)
+    if (!viewer) {
+      return
+    }
+
+    for (const notification of state.notifications) {
+      if (notification.recipientId === viewer.id) {
+        notification.isRead = true
+      }
+    }
+    await writeDemoState(state)
+  }
+
+  async createNotification(input: {
+    recipientId: string
+    kind: NotificationKind
+    title: string
+    body: string
+    linkHref: string | null
+    actorProfile: Profile | null
+  }): Promise<Notification> {
+    const state = await readDemoState()
+    const notification: Notification = {
+      id: randomUUID(),
+      recipientId: input.recipientId,
+      kind: input.kind,
+      title: input.title,
+      body: input.body,
+      linkHref: input.linkHref,
+      actorProfile: input.actorProfile,
+      isRead: false,
+      createdAt: nowIso(),
+    }
+    state.notifications.unshift(notification)
+    await writeDemoState(state)
+    return notification
   }
 }
 

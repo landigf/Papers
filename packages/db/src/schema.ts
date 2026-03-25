@@ -321,6 +321,27 @@ export const peerReviews = pgTable(
   (table) => [index("peer_review_submission_idx").on(table.submissionId)],
 )
 
+export const notifications = pgTable(
+  "notification",
+  {
+    id: text("id").primaryKey(),
+    recipientId: text("recipient_id")
+      .notNull()
+      .references(() => authUsers.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    linkHref: text("link_href"),
+    actorId: text("actor_id").references(() => authUsers.id, { onDelete: "set null" }),
+    isRead: boolean("is_read").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("notification_recipient_idx").on(table.recipientId),
+    index("notification_read_idx").on(table.recipientId, table.isRead),
+  ],
+)
+
 export const researchOpportunities = pgTable(
   "research_opportunity",
   {

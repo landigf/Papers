@@ -286,6 +286,33 @@ export const opportunitySchema = z.object({
 })
 export type Opportunity = z.infer<typeof opportunitySchema>
 
+export const notificationKindSchema = z.enum([
+  "new_follower",
+  "comment",
+  "citation",
+  "group_invite",
+  "review_request",
+  "peer_review_received",
+  "paper_starred",
+])
+export type NotificationKind = z.infer<typeof notificationKindSchema>
+
+export const notificationSchema = z.object({
+  id: z.string(),
+  recipientId: z.string(),
+  kind: notificationKindSchema,
+  title: z.string(),
+  body: z.string(),
+  linkHref: z.string().nullable(),
+  actorProfile: profileSchema.nullable(),
+  isRead: z.boolean(),
+  createdAt: z.string(),
+})
+export type Notification = z.infer<typeof notificationSchema>
+
+export const emailDigestPreferenceSchema = z.enum(["none", "daily", "weekly"])
+export type EmailDigestPreference = z.infer<typeof emailDigestPreferenceSchema>
+
 export const dailyDigestSectionSchema = z.object({
   id: z.string(),
   title: z.string(),

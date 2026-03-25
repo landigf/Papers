@@ -103,37 +103,90 @@ export async function createPaperAction(formData: FormData) {
 export async function createCommentAction(formData: FormData) {
   const paperId = String(formData.get("paperId") ?? "")
   const body = String(formData.get("body") ?? "")
-  await repository.createComment(
-    {
-      paperId,
-      body,
-    },
-    await getViewerHandle(),
-  )
+  const viewerHandle = await getViewerHandle()
+  const comment = await repository.createComment({ paperId, body }, viewerHandle)
+
+  const viewer = await repository.getViewer(viewerHandle)
+  const paperSlug = String(formData.get("paperSlug") ?? paperId)
+  const paperOwnerId = String(formData.get("paperOwnerId") ?? "")
+  const paperTitle = String(formData.get("paperTitle") ?? "this paper")
+
+  if (viewer && paperOwnerId && paperOwnerId !== viewer.id) {
+    await repository.createNotification({
+      recipientId: paperOwnerId,
+      kind: "comment",
+      title: "New comment on your paper",
+      body: `${viewer.profile.displayName} commented on "${paperTitle}".`,
+      linkHref: `/papers/${paperSlug}`,
+      actorProfile: comment.authorProfile,
+    })
+  }
 
   revalidatePath(`/papers/${paperId}`)
   revalidatePath("/feed")
   revalidatePath("/digest")
+  revalidatePath("/notifications")
   redirect(`/papers/${paperId}`)
 }
 
 export async function toggleFollowAction(formData: FormData) {
   const handle = String(formData.get("handle") ?? "")
-  await repository.toggleFollow(handle, await getViewerHandle())
+  const viewerHandle = await getViewerHandle()
+  const isNowFollowing = await repository.toggleFollow(handle, viewerHandle)
+
+  if (isNowFollowing) {
+    const viewer = await repository.getViewer(viewerHandle)
+    const target = await repository.getProfileByHandle(handle)
+    if (viewer && target) {
+      const targetUser = await repository.getViewer(handle)
+      if (targetUser && targetUser.id !== viewer.id) {
+        await repository.createNotification({
+          recipientId: targetUser.id,
+          kind: "new_follower",
+          title: "New follower",
+          body: `${viewer.profile.displayName} started following you.`,
+          linkHref: `/u/${viewer.handle}`,
+          actorProfile: viewer.profile,
+        })
+      }
+    }
+  }
+
   revalidatePath(`/u/${handle}`)
   revalidatePath("/feed")
   revalidatePath("/")
   revalidatePath("/digest")
+  revalidatePath("/notifications")
   redirect(`/u/${handle}`)
 }
 
 export async function toggleStarAction(formData: FormData) {
   const paperSlug = String(formData.get("paperSlug") ?? "")
-  await repository.toggleStar(paperSlug, await getViewerHandle())
+  const viewerHandle = await getViewerHandle()
+  const isNowStarred = await repository.toggleStar(paperSlug, viewerHandle)
+
+  if (isNowStarred) {
+    const viewer = await repository.getViewer(viewerHandle)
+    const paperOwnerId = String(formData.get("paperOwnerId") ?? "")
+    const paperTitle = String(formData.get("paperTitle") ?? "a paper")
+
+    if (viewer && paperOwnerId && paperOwnerId !== viewer.id) {
+      await repository.createNotification({
+        recipientId: paperOwnerId,
+        kind: "paper_starred",
+        title: "Paper starred",
+        body: `${viewer.profile.displayName} starred "${paperTitle}".`,
+        linkHref: `/papers/${paperSlug}`,
+        actorProfile: viewer.profile,
+      })
+    }
+  }
+
   revalidatePath("/feed")
   revalidatePath("/")
   revalidatePath("/digest")
   revalidatePath(`/papers/${paperSlug}`)
+  revalidatePath("/notifications")
   redirect(`/papers/${paperSlug}`)
 }
 
@@ -194,6 +247,7 @@ export async function submitPaperToConferenceAction(formData: FormData) {
 
 export async function createPeerReviewAction(formData: FormData) {
   const conferenceSlug = String(formData.get("conferenceSlug") ?? "")
+  const viewerHandle = await getViewerHandle()
   await repository.createPeerReview(
     {
       conferenceSlug,
@@ -210,10 +264,30 @@ export async function createPeerReviewAction(formData: FormData) {
         | "weak_reject"
         | "reject",
     },
-    await getViewerHandle(),
+    viewerHandle,
   )
+
+  const paperOwnerId = String(formData.get("paperOwnerId") ?? "")
+  const viewer = await repository.getViewer(viewerHandle)
+  if (viewer && paperOwnerId && paperOwnerId !== viewer.id) {
+    await repository.createNotification({
+      recipientId: paperOwnerId,
+      kind: "peer_review_received",
+      title: "New peer review",
+      body: `${viewer.profile.displayName} reviewed your submission in "${String(formData.get("conferenceName") ?? "a conference")}".`,
+      linkHref: `/conferences/${conferenceSlug}`,
+      actorProfile: viewer.profile,
+    })
+  }
 
   revalidatePath(`/conferences/${conferenceSlug}`)
   revalidatePath("/digest")
+  revalidatePath("/notifications")
   redirect(`/conferences/${conferenceSlug}`)
+}
+
+export async function markNotificationsReadAction() {
+  await repository.markNotificationsRead(await getViewerHandle())
+  revalidatePath("/notifications")
+  revalidatePath("/")
 }
