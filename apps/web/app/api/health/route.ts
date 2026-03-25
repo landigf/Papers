@@ -1,5 +1,5 @@
 import { getPapersConfig } from "@papers/config"
-import { pingDatabase } from "@papers/db"
+import { getCacheStats, pingDatabase } from "@papers/db"
 import { NextResponse } from "next/server"
 
 export const dynamic = "force-dynamic"
@@ -26,6 +26,7 @@ export async function GET() {
       status: allOk ? "ok" : "degraded",
       demoMode,
       checks,
+      cache: getCacheStats(),
     },
     { status: allOk ? 200 : 503 },
   )

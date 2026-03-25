@@ -22,6 +22,13 @@ import type {
   User,
 } from "@papers/contracts"
 import { serializePublicPaper, slugify } from "@papers/contracts"
+import {
+  getCachedState,
+  invalidateCachedState,
+  recordHit,
+  recordMiss,
+  setCachedState,
+} from "./cache-counter"
 
 export type DemoState = {
   users: User[]
@@ -745,6 +752,13 @@ function getStorePath(): string {
 }
 
 export async function readDemoState(): Promise<DemoState> {
+  const cached = getCachedState()
+  if (cached) {
+    recordHit()
+    return cached
+  }
+  recordMiss()
+
   const filePath = getStorePath()
   await mkdir(path.dirname(filePath), { recursive: true })
 
@@ -783,10 +797,12 @@ export async function readDemoState(): Promise<DemoState> {
         : initial.groupReadingListItems,
     }
     await writeFile(filePath, JSON.stringify(normalized, null, 2))
+    setCachedState(normalized)
     return normalized
   } catch {
     const initial = createInitialState()
     await writeFile(filePath, JSON.stringify(initial, null, 2))
+    setCachedState(initial)
     return initial
   }
 }
@@ -794,6 +810,7 @@ export async function readDemoState(): Promise<DemoState> {
 export async function writeDemoState(state: DemoState): Promise<void> {
   await mkdir(path.dirname(getStorePath()), { recursive: true })
   await writeFile(getStorePath(), JSON.stringify(state, null, 2))
+  invalidateCachedState()
 }
 
 export function getPublicComments(comments: Comment[], paper: Paper): Comment[] {
