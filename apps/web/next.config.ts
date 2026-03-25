@@ -11,6 +11,7 @@ const nextConfig: NextConfig = {
     "@papers/db",
     "@papers/ui",
   ],
+  serverExternalPackages: ["better-auth", "drizzle-orm", "pg"],
 }
 
 export default nextConfig
