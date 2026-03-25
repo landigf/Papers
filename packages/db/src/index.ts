@@ -4,6 +4,7 @@ import {
   type Comment,
   type Conference,
   type ConferenceSubmission,
+  type Conversation,
   type CreateCommentInput,
   type CreatePaperInput,
   type CreatePeerReviewInput,
@@ -12,16 +13,21 @@ import {
   createPaperInputSchema,
   createPeerReviewInputSchema,
   type DailyDigest,
+  type DirectMessage,
   dailyDigestSchema,
   type FeedEntry,
+  type MarkMessagesReadInput,
+  markMessagesReadInputSchema,
   type Opportunity,
   type Paper,
   type Profile,
   type PublicPaper,
   type RoadmapBucket,
   type SavedInterest,
+  type SendDirectMessageInput,
   type SubmitPaperToConferenceInput,
   saveInterestInputSchema,
+  sendDirectMessageInputSchema,
   slugify,
   submitPaperToConferenceInputSchema,
   type Topic,
@@ -45,6 +51,9 @@ import {
   conferenceSubmissions,
   conferences,
   conferenceTopics,
+  conversationParticipants,
+  conversations,
+  directMessages,
   follows,
   moderationFlags,
   paperAssets,
@@ -68,6 +77,9 @@ export {
   conferenceSubmissions,
   conferences,
   conferenceTopics,
+  conversationParticipants,
+  conversations,
+  directMessages,
   follows,
   moderationFlags,
   paperAssets,
@@ -139,6 +151,20 @@ export interface PapersRepository {
   ): Promise<DemoState["peerReviews"][number]>
   getDailyDigest(viewerHandle?: string | null): Promise<DailyDigest>
   getOpportunities(viewerHandle?: string | null): Promise<Opportunity[]>
+  listConversations(viewerHandle?: string | null): Promise<Conversation[]>
+  getConversation(
+    conversationId: string,
+    viewerHandle?: string | null,
+  ): Promise<{
+    conversation: Conversation
+    messages: DirectMessage[]
+  } | null>
+  sendDirectMessage(
+    input: SendDirectMessageInput,
+    viewerHandle?: string | null,
+  ): Promise<DirectMessage>
+  markMessagesRead(input: MarkMessagesReadInput, viewerHandle?: string | null): Promise<void>
+  getUnreadMessageCount(viewerHandle?: string | null): Promise<number>
 }
 
 async function getViewerHandle(viewerHandle?: string | null): Promise<string> {
@@ -876,6 +902,175 @@ class DemoRepository implements PapersRepository {
     return state.opportunities
       .map((opportunity) => matchOpportunity(opportunity, viewer, state))
       .sort((left, right) => right.matchReasons.length - left.matchReasons.length)
+  }
+
+  async listConversations(viewerHandle?: string | null): Promise<Conversation[]> {
+    const state = await readDemoState()
+    const viewer = await this.getViewer(viewerHandle)
+    if (!viewer) {
+      return []
+    }
+
+    return state.conversations
+      .filter((conversation) => conversation.participantIds.includes(viewer.id))
+      .map((conversation) => {
+        const messages = state.directMessages.filter(
+          (message) => message.conversationId === conversation.id,
+        )
+        const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null
+        const unreadCount = messages.filter(
+          (message) => message.senderId !== viewer.id && message.readAt === null,
+        ).length
+
+        return {
+          ...conversation,
+          lastMessage: lastMessage ?? null,
+          unreadCount,
+        }
+      })
+      .sort(
+        (left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime(),
+      )
+  }
+
+  async getConversation(
+    conversationId: string,
+    viewerHandle?: string | null,
+  ): Promise<{ conversation: Conversation; messages: DirectMessage[] } | null> {
+    const state = await readDemoState()
+    const viewer = await this.getViewer(viewerHandle)
+    if (!viewer) {
+      return null
+    }
+
+    const conversation = state.conversations.find(
+      (entry) => entry.id === conversationId && entry.participantIds.includes(viewer.id),
+    )
+    if (!conversation) {
+      return null
+    }
+
+    const messages = state.directMessages
+      .filter((message) => message.conversationId === conversationId)
+      .sort(
+        (left, right) => new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime(),
+      )
+
+    const unreadCount = messages.filter(
+      (message) => message.senderId !== viewer.id && message.readAt === null,
+    ).length
+
+    return {
+      conversation: { ...conversation, unreadCount },
+      messages,
+    }
+  }
+
+  async sendDirectMessage(
+    input: SendDirectMessageInput,
+    viewerHandle?: string | null,
+  ): Promise<DirectMessage> {
+    const parsed = sendDirectMessageInputSchema.parse(input)
+    const state = await readDemoState()
+    const viewer = await this.getViewer(viewerHandle)
+
+    if (!viewer) {
+      throw new Error("A viewer is required to send a message.")
+    }
+
+    const recipient = state.users.find((user) => user.handle === parsed.recipientHandle)
+    if (!recipient) {
+      throw new Error("Recipient not found.")
+    }
+    if (recipient.id === viewer.id) {
+      throw new Error("You cannot message yourself.")
+    }
+
+    let conversation = state.conversations.find(
+      (entry) =>
+        entry.participantIds.includes(viewer.id) && entry.participantIds.includes(recipient.id),
+    )
+
+    if (!conversation) {
+      conversation = {
+        id: randomUUID(),
+        participantIds: [viewer.id, recipient.id],
+        participantProfiles: [viewer.profile, recipient.profile],
+        lastMessage: null,
+        unreadCount: 0,
+        createdAt: nowIso(),
+        updatedAt: nowIso(),
+      }
+      state.conversations.push(conversation)
+    }
+
+    const message: DirectMessage = {
+      id: randomUUID(),
+      conversationId: conversation.id,
+      senderId: viewer.id,
+      senderProfile: viewer.profile,
+      body: parsed.body,
+      createdAt: nowIso(),
+      readAt: null,
+    }
+
+    state.directMessages.push(message)
+    conversation.lastMessage = message
+    conversation.updatedAt = message.createdAt
+    await writeDemoState(state)
+    return message
+  }
+
+  async markMessagesRead(
+    input: MarkMessagesReadInput,
+    viewerHandle?: string | null,
+  ): Promise<void> {
+    const parsed = markMessagesReadInputSchema.parse(input)
+    const state = await readDemoState()
+    const viewer = await this.getViewer(viewerHandle)
+
+    if (!viewer) {
+      return
+    }
+
+    const conversation = state.conversations.find(
+      (entry) => entry.id === parsed.conversationId && entry.participantIds.includes(viewer.id),
+    )
+    if (!conversation) {
+      return
+    }
+
+    const now = nowIso()
+    for (const message of state.directMessages) {
+      if (
+        message.conversationId === parsed.conversationId &&
+        message.senderId !== viewer.id &&
+        message.readAt === null
+      ) {
+        message.readAt = now
+      }
+    }
+
+    await writeDemoState(state)
+  }
+
+  async getUnreadMessageCount(viewerHandle?: string | null): Promise<number> {
+    const state = await readDemoState()
+    const viewer = await this.getViewer(viewerHandle)
+    if (!viewer) {
+      return 0
+    }
+
+    return state.directMessages.filter(
+      (message) =>
+        message.senderId !== viewer.id &&
+        message.readAt === null &&
+        state.conversations.some(
+          (conversation) =>
+            conversation.id === message.conversationId &&
+            conversation.participantIds.includes(viewer.id),
+        ),
+    ).length
   }
 }
 

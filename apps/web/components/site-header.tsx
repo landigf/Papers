@@ -4,9 +4,11 @@ import Link from "next/link"
 export function SiteHeader({
   viewer,
   authMode,
+  unreadMessageCount,
 }: {
   viewer: User | null
   authMode: "demo" | "managed"
+  unreadMessageCount?: number
 }) {
   return (
     <header className="site-header">
@@ -24,6 +26,14 @@ export function SiteHeader({
         <Link href="/conferences">Conferences</Link>
         <Link href="/digest">Digest</Link>
         <Link href="/opportunities">Opportunities</Link>
+        {viewer ? (
+          <Link className="nav-messages" href="/messages">
+            Messages
+            {unreadMessageCount && unreadMessageCount > 0 ? (
+              <span className="unread-badge">{unreadMessageCount}</span>
+            ) : null}
+          </Link>
+        ) : null}
         <Link href="/papers/new">New post</Link>
         {viewer ? <Link href={`/u/${viewer.handle}`}>Profile</Link> : null}
         <Link href="/settings/account">Account</Link>

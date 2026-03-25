@@ -352,3 +352,36 @@ export const createPeerReviewInputSchema = z.object({
   recommendation: reviewRecommendationSchema,
 })
 export type CreatePeerReviewInput = z.infer<typeof createPeerReviewInputSchema>
+
+export const directMessageSchema = z.object({
+  id: z.string(),
+  conversationId: z.string(),
+  senderId: z.string(),
+  senderProfile: profileSchema.nullable(),
+  body: z.string(),
+  createdAt: z.string(),
+  readAt: z.string().nullable(),
+})
+export type DirectMessage = z.infer<typeof directMessageSchema>
+
+export const conversationSchema = z.object({
+  id: z.string(),
+  participantIds: z.array(z.string()),
+  participantProfiles: z.array(profileSchema),
+  lastMessage: directMessageSchema.nullable(),
+  unreadCount: z.number().int().nonnegative(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+})
+export type Conversation = z.infer<typeof conversationSchema>
+
+export const sendDirectMessageInputSchema = z.object({
+  recipientHandle: z.string().min(1),
+  body: z.string().min(1).max(4000),
+})
+export type SendDirectMessageInput = z.infer<typeof sendDirectMessageInputSchema>
+
+export const markMessagesReadInputSchema = z.object({
+  conversationId: z.string().min(1),
+})
+export type MarkMessagesReadInput = z.infer<typeof markMessagesReadInputSchema>

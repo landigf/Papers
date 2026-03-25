@@ -321,6 +321,48 @@ export const peerReviews = pgTable(
   (table) => [index("peer_review_submission_idx").on(table.submissionId)],
 )
 
+export const conversations = pgTable("conversation", {
+  id: text("id").primaryKey(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const conversationParticipants = pgTable(
+  "conversation_participant",
+  {
+    conversationId: text("conversation_id")
+      .notNull()
+      .references(() => conversations.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => authUsers.id, { onDelete: "cascade" }),
+  },
+  (table) => [
+    primaryKey({ columns: [table.conversationId, table.userId] }),
+    index("conversation_participant_user_idx").on(table.userId),
+  ],
+)
+
+export const directMessages = pgTable(
+  "direct_message",
+  {
+    id: text("id").primaryKey(),
+    conversationId: text("conversation_id")
+      .notNull()
+      .references(() => conversations.id, { onDelete: "cascade" }),
+    senderId: text("sender_id")
+      .notNull()
+      .references(() => authUsers.id, { onDelete: "cascade" }),
+    body: text("body").notNull(),
+    readAt: timestamp("read_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("direct_message_conversation_idx").on(table.conversationId),
+    index("direct_message_sender_idx").on(table.senderId),
+  ],
+)
+
 export const researchOpportunities = pgTable(
   "research_opportunity",
   {

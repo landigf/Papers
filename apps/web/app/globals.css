@@ -311,6 +311,140 @@ select {
   margin: 6px 0 0;
 }
 
+.nav-messages {
+  position: relative;
+}
+
+.unread-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--accent-strong);
+  color: #05080f;
+  font-size: 0.72rem;
+  font-weight: 700;
+  margin-left: 6px;
+}
+
+.conversation-card {
+  display: grid;
+  gap: 6px;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: var(--bg-soft);
+  transition: border-color 0.15s;
+}
+
+.conversation-card:hover {
+  border-color: var(--accent);
+}
+
+.conversation-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.conversation-handle {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.conversation-preview {
+  color: var(--muted);
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conversation-time {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.message-thread {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.message-bubble {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  max-width: 80%;
+}
+
+.message-own {
+  justify-self: end;
+  background: rgba(59, 125, 255, 0.12);
+  border-color: rgba(59, 125, 255, 0.25);
+}
+
+.message-other {
+  justify-self: start;
+  background: var(--bg-soft);
+}
+
+.message-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.82rem;
+}
+
+.message-meta time {
+  color: var(--muted);
+}
+
+.read-receipt {
+  color: var(--success);
+  font-size: 0.78rem;
+}
+
+.message-compose {
+  display: grid;
+  gap: 12px;
+}
+
+.message-compose textarea {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: rgba(7, 10, 15, 0.92);
+  color: var(--text);
+  resize: vertical;
+}
+
+.profile-actions {
+  display: grid;
+  gap: 12px;
+}
+
+.message-compose-inline {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+}
+
+.message-compose-inline input[type="text"] {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: rgba(7, 10, 15, 0.92);
+  color: var(--text);
+}
+
 @media (max-width: 920px) {
   .site-header,
   .hero-panel,

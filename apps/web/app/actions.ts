@@ -217,3 +217,29 @@ export async function createPeerReviewAction(formData: FormData) {
   revalidatePath("/digest")
   redirect(`/conferences/${conferenceSlug}`)
 }
+
+export async function sendDirectMessageAction(formData: FormData) {
+  const recipientHandle = String(formData.get("recipientHandle") ?? "")
+  const body = String(formData.get("body") ?? "").trim()
+  const redirectTo = String(formData.get("redirectTo") ?? "")
+
+  const message = await repository.sendDirectMessage(
+    { recipientHandle, body },
+    await getViewerHandle(),
+  )
+
+  revalidatePath("/messages")
+  revalidatePath(`/messages/${message.conversationId}`)
+
+  if (redirectTo) {
+    redirect(redirectTo)
+  }
+  redirect(`/messages/${message.conversationId}`)
+}
+
+export async function markMessagesReadAction(formData: FormData) {
+  const conversationId = String(formData.get("conversationId") ?? "")
+  await repository.markMessagesRead({ conversationId }, await getViewerHandle())
+  revalidatePath("/messages")
+  revalidatePath(`/messages/${conversationId}`)
+}

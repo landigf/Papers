@@ -3,7 +3,7 @@ import { ActionButton, Pill, SectionCard } from "@papers/ui"
 import { notFound } from "next/navigation"
 import { OpportunityCard } from "../../../components/opportunity-card"
 import { getViewerHandleFromCookies } from "../../../lib/viewer"
-import { toggleFollowAction } from "../../actions"
+import { sendDirectMessageAction, toggleFollowAction } from "../../actions"
 
 const repository = createRepository()
 
@@ -44,12 +44,26 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
               <Pill key={interest}>{interest}</Pill>
             ))}
           </div>
-          <form action={toggleFollowAction}>
-            <input name="handle" type="hidden" value={detail.profile.handle} />
-            <ActionButton type="submit">
-              {detail.isFollowedByViewer ? "Unfollow" : "Follow"} researcher
-            </ActionButton>
-          </form>
+          <div className="profile-actions">
+            <form action={toggleFollowAction}>
+              <input name="handle" type="hidden" value={detail.profile.handle} />
+              <ActionButton type="submit">
+                {detail.isFollowedByViewer ? "Unfollow" : "Follow"} researcher
+              </ActionButton>
+            </form>
+            {viewerHandle && viewerHandle !== detail.profile.handle ? (
+              <form action={sendDirectMessageAction} className="message-compose-inline">
+                <input name="recipientHandle" type="hidden" value={detail.profile.handle} />
+                <input
+                  name="body"
+                  placeholder={`Message ${detail.profile.displayName}...`}
+                  required
+                  type="text"
+                />
+                <ActionButton type="submit">Send message</ActionButton>
+              </form>
+            ) : null}
+          </div>
         </SectionCard>
 
         <SectionCard eyebrow="Public work" title="Published posts">

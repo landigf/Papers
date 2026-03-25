@@ -5,6 +5,8 @@ import type {
   Comment,
   Conference,
   ConferenceSubmission,
+  Conversation,
+  DirectMessage,
   Opportunity,
   Paper,
   PaperAsset,
@@ -29,6 +31,8 @@ export type DemoState = {
   submissions: ConferenceSubmission[]
   peerReviews: PeerReview[]
   opportunities: Opportunity[]
+  conversations: Conversation[]
+  directMessages: DirectMessage[]
 }
 
 function nowIso(): string {
@@ -509,6 +513,69 @@ function createInitialState(): DemoState {
     reviewCount: peerReviews.filter((review) => review.conferenceId === conference.id).length,
   }))
 
+  const demoConversations: Conversation[] = [
+    {
+      id: "conv_1",
+      participantIds: [gennaro.id, maya.id],
+      participantProfiles: [gennaro.profile, maya.profile],
+      lastMessage: null,
+      unreadCount: 0,
+      createdAt: "2026-03-23T13:00:00.000Z",
+      updatedAt: "2026-03-23T14:22:00.000Z",
+    },
+    {
+      id: "conv_2",
+      participantIds: [gennaro.id, amina.id],
+      participantProfiles: [gennaro.profile, amina.profile],
+      lastMessage: null,
+      unreadCount: 0,
+      createdAt: "2026-03-23T15:00:00.000Z",
+      updatedAt: "2026-03-23T15:10:00.000Z",
+    },
+  ]
+
+  const demoDirectMessages: DirectMessage[] = [
+    {
+      id: "dm_1",
+      conversationId: "conv_1",
+      senderId: maya.id,
+      senderProfile: maya.profile,
+      body: "Hey Gennaro — saw your collaboration paper. I think we could combine that with the structured-review work I've been doing. Worth a call?",
+      createdAt: "2026-03-23T13:05:00.000Z",
+      readAt: "2026-03-23T13:10:00.000Z",
+    },
+    {
+      id: "dm_2",
+      conversationId: "conv_1",
+      senderId: gennaro.id,
+      senderProfile: gennaro.profile,
+      body: "Definitely — I've been thinking about how trace visibility could plug into the feed ranking. Let's sync this week.",
+      createdAt: "2026-03-23T13:15:00.000Z",
+      readAt: "2026-03-23T13:20:00.000Z",
+    },
+    {
+      id: "dm_3",
+      conversationId: "conv_1",
+      senderId: maya.id,
+      senderProfile: maya.profile,
+      body: "Perfect. Thursday afternoon works for me. I'll draft a short outline of what a combined submission could look like.",
+      createdAt: "2026-03-23T14:22:00.000Z",
+      readAt: null,
+    },
+    {
+      id: "dm_4",
+      conversationId: "conv_2",
+      senderId: amina.id,
+      senderProfile: amina.profile,
+      body: "Hi Gennaro, your fuzzy logic work overlaps with some optimization models we're exploring at EPFL. Would you be open to a short collaboration?",
+      createdAt: "2026-03-23T15:10:00.000Z",
+      readAt: null,
+    },
+  ]
+
+  demoConversations[0].lastMessage = demoDirectMessages[2]
+  demoConversations[1].lastMessage = demoDirectMessages[3]
+
   return {
     users: [gennaro, maya, amina],
     papers: papersWithCommentCounts,
@@ -572,6 +639,8 @@ function createInitialState(): DemoState {
     submissions,
     peerReviews,
     opportunities,
+    conversations: demoConversations,
+    directMessages: demoDirectMessages,
   }
 }
 
@@ -609,6 +678,12 @@ export async function readDemoState(): Promise<DemoState> {
       opportunities: Array.isArray(parsed.opportunities)
         ? parsed.opportunities
         : initial.opportunities,
+      conversations: Array.isArray(parsed.conversations)
+        ? parsed.conversations
+        : initial.conversations,
+      directMessages: Array.isArray(parsed.directMessages)
+        ? parsed.directMessages
+        : initial.directMessages,
     }
     await writeFile(filePath, JSON.stringify(normalized, null, 2))
     return normalized
