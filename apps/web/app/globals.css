@@ -311,6 +311,77 @@ select {
   margin: 6px 0 0;
 }
 
+.filter-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  font-size: 0.82rem;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.filter-pill:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+}
+
+.filter-pill-active {
+  background: rgba(154, 209, 255, 0.12);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.deadline-urgency {
+  margin-bottom: -12px;
+}
+
+.deadline-urgency .pill {
+  background: rgba(255, 140, 140, 0.12);
+  color: var(--danger);
+  border-color: rgba(255, 140, 140, 0.25);
+}
+
+.submission-card {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: var(--bg-soft);
+}
+
+.review-stack {
+  display: grid;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.review-card {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: rgba(7, 10, 15, 0.6);
+}
+
+.review-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.muted-copy {
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
 @media (max-width: 920px) {
   .site-header,
   .hero-panel,

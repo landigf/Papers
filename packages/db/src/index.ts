@@ -107,6 +107,15 @@ export type ConferenceDetail = {
   viewerPapers: PublicPaper[]
 }
 
+export type ViewerSubmissionEntry = ConferenceSubmission & {
+  conference: Conference
+  reviews: DemoState["peerReviews"]
+}
+
+export type PaperSubmissionEntry = ConferenceSubmission & {
+  conference: Conference
+}
+
 export interface PapersRepository {
   getViewer(handle?: string | null): Promise<User | null>
   upsertDemoViewer(input: {
@@ -137,6 +146,8 @@ export interface PapersRepository {
     input: CreatePeerReviewInput,
     viewerHandle?: string | null,
   ): Promise<DemoState["peerReviews"][number]>
+  getViewerSubmissions(viewerHandle?: string | null): Promise<ViewerSubmissionEntry[]>
+  getPaperSubmissions(paperSlug: string): Promise<PaperSubmissionEntry[]>
   getDailyDigest(viewerHandle?: string | null): Promise<DailyDigest>
   getOpportunities(viewerHandle?: string | null): Promise<Opportunity[]>
 }
@@ -785,6 +796,83 @@ class DemoRepository implements PapersRepository {
     conference.reviewCount += 1
     await writeDemoState(state)
     return review
+  }
+
+  async getViewerSubmissions(viewerHandle?: string | null): Promise<ViewerSubmissionEntry[]> {
+    const state = await readDemoState()
+    const viewer = await this.getViewer(viewerHandle)
+
+    if (!viewer) {
+      return []
+    }
+
+    const viewerPaperIds = new Set(
+      state.papers.filter((paper) => paper.ownerId === viewer.id).map((paper) => paper.id),
+    )
+
+    return state.submissions
+      .filter((submission) => viewerPaperIds.has(submission.paperId))
+      .flatMap((submission) => {
+        const conference = state.conferences.find((entry) => entry.id === submission.conferenceId)
+        if (!conference) return []
+        const reviews = state.peerReviews.filter((review) => review.submissionId === submission.id)
+        const averageScore =
+          reviews.length > 0
+            ? Number(
+                (reviews.reduce((sum, review) => sum + review.score, 0) / reviews.length).toFixed(
+                  1,
+                ),
+              )
+            : null
+
+        return [
+          {
+            ...submission,
+            reviewCount: reviews.length,
+            averageScore,
+            conference,
+            reviews,
+          },
+        ]
+      })
+      .sort(
+        (left, right) =>
+          new Date(right.submittedAt).getTime() - new Date(left.submittedAt).getTime(),
+      )
+  }
+
+  async getPaperSubmissions(paperSlug: string): Promise<PaperSubmissionEntry[]> {
+    const state = await readDemoState()
+    const paper = state.papers.find((entry) => entry.slug === paperSlug || entry.id === paperSlug)
+
+    if (!paper) {
+      return []
+    }
+
+    return state.submissions
+      .filter((submission) => submission.paperId === paper.id)
+      .flatMap((submission) => {
+        const conference = state.conferences.find((entry) => entry.id === submission.conferenceId)
+        if (!conference) return []
+        const reviews = state.peerReviews.filter((review) => review.submissionId === submission.id)
+        const averageScore =
+          reviews.length > 0
+            ? Number(
+                (reviews.reduce((sum, review) => sum + review.score, 0) / reviews.length).toFixed(
+                  1,
+                ),
+              )
+            : null
+
+        return [
+          {
+            ...submission,
+            reviewCount: reviews.length,
+            averageScore,
+            conference,
+          },
+        ]
+      })
   }
 
   async getDailyDigest(viewerHandle?: string | null): Promise<DailyDigest> {

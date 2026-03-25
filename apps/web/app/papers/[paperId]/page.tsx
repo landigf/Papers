@@ -1,5 +1,6 @@
 import { createRepository } from "@papers/db"
 import { ActionButton, Pill, SectionCard } from "@papers/ui"
+import Link from "next/link"
 import { notFound } from "next/navigation"
 import { ConferenceCard } from "../../../components/conference-card"
 import { getViewerHandleFromCookies } from "../../../lib/viewer"
@@ -10,9 +11,10 @@ const repository = createRepository()
 export default async function PaperPage({ params }: { params: Promise<{ paperId: string }> }) {
   const { paperId } = await params
   const viewerHandle = await getViewerHandleFromCookies()
-  const [detail, conferences] = await Promise.all([
+  const [detail, conferences, paperSubmissions] = await Promise.all([
     repository.getPaperBySlug(paperId, viewerHandle),
     repository.listConferences(),
+    repository.getPaperSubmissions(paperId),
   ])
 
   if (!detail) {
@@ -83,11 +85,52 @@ export default async function PaperPage({ params }: { params: Promise<{ paperId:
           </div>
         </SectionCard>
 
+        {paperSubmissions.length > 0 ? (
+          <SectionCard
+            eyebrow="Submission status"
+            title={`Submitted to ${paperSubmissions.length} conference${paperSubmissions.length > 1 ? "s" : ""}`}
+          >
+            <div className="feed-stack">
+              {paperSubmissions.map((entry) => (
+                <div className="submission-card" key={entry.id}>
+                  <div className="feed-card-meta">
+                    <div>
+                      <strong>
+                        <Link href={`/conferences/${entry.conference.slug}`}>
+                          {entry.conference.name}
+                        </Link>
+                      </strong>
+                    </div>
+                    <div className="pill-row">
+                      <Pill>{entry.status.replaceAll("_", " ")}</Pill>
+                      <Pill>
+                        {entry.averageScore ? `avg ${entry.averageScore}/5` : "no score yet"}
+                      </Pill>
+                      <Pill>{entry.reviewCount} reviews</Pill>
+                    </div>
+                  </div>
+                  <p className="muted-copy">
+                    Submitted {entry.submittedAt.slice(0, 10)} · review deadline{" "}
+                    {entry.conference.reviewDeadline.slice(0, 10)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </SectionCard>
+        ) : null}
+
         <SectionCard eyebrow="Conferences" title="Where this work could get feedback next">
           <div className="feed-stack">
-            {conferences.slice(0, 2).map((conference) => (
-              <ConferenceCard conference={conference} key={conference.id} />
-            ))}
+            {conferences
+              .filter(
+                (conference) =>
+                  conference.status === "open" &&
+                  !paperSubmissions.some((entry) => entry.conferenceId === conference.id),
+              )
+              .slice(0, 2)
+              .map((conference) => (
+                <ConferenceCard conference={conference} key={conference.id} />
+              ))}
           </div>
         </SectionCard>
       </div>
