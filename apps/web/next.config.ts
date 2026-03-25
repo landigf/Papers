@@ -2,7 +2,8 @@ import type { NextConfig } from "next"
 
 const nextConfig: NextConfig = {
   basePath: "/papers",
-  reactCompiler: false,
+  output: "standalone",
+
   transpilePackages: [
     "@papers/ai",
     "@papers/auth",
