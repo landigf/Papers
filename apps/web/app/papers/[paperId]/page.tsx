@@ -3,16 +3,18 @@ import { ActionButton, Pill, SectionCard } from "@papers/ui"
 import { notFound } from "next/navigation"
 import { ConferenceCard } from "../../../components/conference-card"
 import { getViewerHandleFromCookies } from "../../../lib/viewer"
-import { createCommentAction, toggleStarAction } from "../../actions"
+import { createCommentAction, submitRevisionAction, toggleStarAction } from "../../actions"
 
 const repository = createRepository()
 
 export default async function PaperPage({ params }: { params: Promise<{ paperId: string }> }) {
   const { paperId } = await params
   const viewerHandle = await getViewerHandleFromCookies()
-  const [detail, conferences] = await Promise.all([
+  const [detail, conferences, reviewSummary, viewer] = await Promise.all([
     repository.getPaperBySlug(paperId, viewerHandle),
     repository.listConferences(),
+    repository.getPaperReviewSummary(paperId),
+    repository.getViewer(viewerHandle),
   ])
 
   if (!detail) {
@@ -82,6 +84,77 @@ export default async function PaperPage({ params }: { params: Promise<{ paperId:
             ))}
           </div>
         </SectionCard>
+
+        {reviewSummary.length > 0 ? (
+          <SectionCard eyebrow="Peer review" title="Review status across conferences">
+            <div className="feed-stack">
+              {reviewSummary.map((entry) => (
+                <div className="submission-card" key={entry.conferenceName}>
+                  <div className="feed-card-meta">
+                    <strong>{entry.conferenceName}</strong>
+                    <div className="pill-row">
+                      <Pill>{entry.submissionStatus.replaceAll("_", " ")}</Pill>
+                      <Pill>
+                        {entry.reviews.length} review{entry.reviews.length === 1 ? "" : "s"}
+                      </Pill>
+                      {entry.revisionCount > 0 ? (
+                        <Pill>
+                          {entry.revisionCount} revision{entry.revisionCount === 1 ? "" : "s"}
+                        </Pill>
+                      ) : null}
+                    </div>
+                  </div>
+                  {entry.reviews.map((review) => (
+                    <div className="review-card" key={review.id}>
+                      <div className="feed-card-meta">
+                        <strong>
+                          {review.reviewerProfile?.displayName ?? "Anonymous reviewer"}
+                        </strong>
+                        <span>
+                          {review.recommendation.replaceAll("_", " ")} · score {review.score}/5 ·
+                          confidence {review.confidence}/5
+                        </span>
+                      </div>
+                      <p>{review.summary}</p>
+                      <p>
+                        <strong>Strengths:</strong> {review.strengths}
+                      </p>
+                      <p>
+                        <strong>Concerns:</strong> {review.concerns}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </SectionCard>
+        ) : null}
+
+        {viewer && detail.paper.ownerId === viewer.id ? (
+          <SectionCard eyebrow="Revision" title="Submit a revised version">
+            <form action={submitRevisionAction} className="stacked-form">
+              <input name="paperSlug" type="hidden" value={detail.paper.slug} />
+              <label>
+                Title
+                <input defaultValue={detail.paper.title} name="title" required type="text" />
+              </label>
+              <label>
+                Abstract
+                <textarea defaultValue={detail.paper.abstract} name="abstract" required rows={4} />
+              </label>
+              <label>
+                Body (Markdown)
+                <textarea
+                  defaultValue={detail.paper.bodyMarkdown}
+                  name="bodyMarkdown"
+                  required
+                  rows={10}
+                />
+              </label>
+              <ActionButton type="submit">Submit revision</ActionButton>
+            </form>
+          </SectionCard>
+        ) : null}
 
         <SectionCard eyebrow="Conferences" title="Where this work could get feedback next">
           <div className="feed-stack">

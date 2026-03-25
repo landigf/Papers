@@ -192,6 +192,41 @@ export async function submitPaperToConferenceAction(formData: FormData) {
   redirect(`/conferences/${conferenceSlug}`)
 }
 
+export async function assignReviewerAction(formData: FormData) {
+  const conferenceSlug = String(formData.get("conferenceSlug") ?? "")
+  await repository.assignReviewer(
+    {
+      conferenceSlug,
+      submissionId: String(formData.get("submissionId") ?? ""),
+      reviewerHandle: String(formData.get("reviewerHandle") ?? "").trim(),
+    },
+    await getViewerHandle(),
+  )
+
+  revalidatePath(`/conferences/${conferenceSlug}`)
+  revalidatePath("/reviews")
+  redirect(`/conferences/${conferenceSlug}`)
+}
+
+export async function submitRevisionAction(formData: FormData) {
+  const paperSlug = String(formData.get("paperSlug") ?? "")
+  await repository.submitRevision(
+    {
+      paperSlug,
+      title: String(formData.get("title") ?? "").trim(),
+      abstract: String(formData.get("abstract") ?? "").trim(),
+      bodyMarkdown: String(formData.get("bodyMarkdown") ?? "").trim(),
+    },
+    await getViewerHandle(),
+  )
+
+  revalidatePath(`/papers/${paperSlug}`)
+  revalidatePath("/feed")
+  revalidatePath("/conferences")
+  revalidatePath("/digest")
+  redirect(`/papers/${paperSlug}`)
+}
+
 export async function createPeerReviewAction(formData: FormData) {
   const conferenceSlug = String(formData.get("conferenceSlug") ?? "")
   await repository.createPeerReview(
@@ -214,6 +249,7 @@ export async function createPeerReviewAction(formData: FormData) {
   )
 
   revalidatePath(`/conferences/${conferenceSlug}`)
+  revalidatePath("/reviews")
   revalidatePath("/digest")
   redirect(`/conferences/${conferenceSlug}`)
 }

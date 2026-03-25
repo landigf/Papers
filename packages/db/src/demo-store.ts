@@ -12,6 +12,7 @@ import type {
   PeerReview,
   Profile,
   PublicPaper,
+  ReviewerAssignment,
   RoadmapBucket,
   SavedInterest,
   Topic,
@@ -28,6 +29,7 @@ export type DemoState = {
   conferences: Conference[]
   submissions: ConferenceSubmission[]
   peerReviews: PeerReview[]
+  reviewerAssignments: ReviewerAssignment[]
   opportunities: Opportunity[]
 }
 
@@ -396,6 +398,7 @@ function createInitialState(): DemoState {
       submittedAt: "2026-03-23T12:10:00.000Z",
       reviewCount: 0,
       averageScore: null,
+      revisionCount: 0,
     },
     {
       id: "submission_blind_1",
@@ -406,6 +409,7 @@ function createInitialState(): DemoState {
       submittedAt: "2026-03-20T09:30:00.000Z",
       reviewCount: 1,
       averageScore: 4,
+      revisionCount: 0,
     },
     {
       id: "submission_public_2",
@@ -416,6 +420,7 @@ function createInitialState(): DemoState {
       submittedAt: "2026-03-19T16:20:00.000Z",
       reviewCount: 1,
       averageScore: 5,
+      revisionCount: 0,
     },
   ]
 
@@ -434,6 +439,7 @@ function createInitialState(): DemoState {
       concerns:
         "It would benefit from a deeper comparison between reviewer transparency and blind preservation in mixed review settings.",
       recommendation: "weak_accept",
+      versionId: null,
       createdAt: "2026-03-22T21:10:00.000Z",
     },
     {
@@ -450,7 +456,47 @@ function createInitialState(): DemoState {
       concerns:
         "Would still need user studies or comparative evidence before a full conference-ready version.",
       recommendation: "accept",
+      versionId: null,
       createdAt: "2026-03-22T22:40:00.000Z",
+    },
+  ]
+
+  const reviewerAssignments: ReviewerAssignment[] = [
+    {
+      id: "assign_1",
+      conferenceId: "conf_review_1",
+      submissionId: "submission_blind_1",
+      reviewerHandle: gennaro.handle,
+      reviewerProfile: gennaro.profile,
+      assignedAt: "2026-03-21T10:00:00.000Z",
+      status: "completed",
+    },
+    {
+      id: "assign_2",
+      conferenceId: "conf_review_1",
+      submissionId: "submission_public_2",
+      reviewerHandle: amina.handle,
+      reviewerProfile: amina.profile,
+      assignedAt: "2026-03-21T10:05:00.000Z",
+      status: "completed",
+    },
+    {
+      id: "assign_3",
+      conferenceId: "conf_open_1",
+      submissionId: "submission_public_1",
+      reviewerHandle: maya.handle,
+      reviewerProfile: maya.profile,
+      assignedAt: "2026-03-23T14:00:00.000Z",
+      status: "pending",
+    },
+    {
+      id: "assign_4",
+      conferenceId: "conf_review_1",
+      submissionId: "submission_blind_1",
+      reviewerHandle: amina.handle,
+      reviewerProfile: amina.profile,
+      assignedAt: "2026-03-22T08:00:00.000Z",
+      status: "pending",
     },
   ]
 
@@ -571,6 +617,7 @@ function createInitialState(): DemoState {
     conferences: conferencesWithCounts,
     submissions,
     peerReviews,
+    reviewerAssignments,
     opportunities,
   }
 }
@@ -606,6 +653,9 @@ export async function readDemoState(): Promise<DemoState> {
       conferences: Array.isArray(parsed.conferences) ? parsed.conferences : initial.conferences,
       submissions: Array.isArray(parsed.submissions) ? parsed.submissions : initial.submissions,
       peerReviews: Array.isArray(parsed.peerReviews) ? parsed.peerReviews : initial.peerReviews,
+      reviewerAssignments: Array.isArray(parsed.reviewerAssignments)
+        ? parsed.reviewerAssignments
+        : initial.reviewerAssignments,
       opportunities: Array.isArray(parsed.opportunities)
         ? parsed.opportunities
         : initial.opportunities,

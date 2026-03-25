@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto"
 import { getPapersConfig } from "@papers/config"
 import {
+  type AssignReviewerInput,
+  assignReviewerInputSchema,
   type Comment,
   type Conference,
   type ConferenceSubmission,
@@ -16,14 +18,18 @@ import {
   type FeedEntry,
   type Opportunity,
   type Paper,
+  type PaperVersion,
   type Profile,
   type PublicPaper,
+  type ReviewerAssignment,
   type RoadmapBucket,
   type SavedInterest,
   type SubmitPaperToConferenceInput,
+  type SubmitRevisionInput,
   saveInterestInputSchema,
   slugify,
   submitPaperToConferenceInputSchema,
+  submitRevisionInputSchema,
   type Topic,
   type UpdateViewerProfileInput,
   type User,
@@ -137,6 +143,27 @@ export interface PapersRepository {
     input: CreatePeerReviewInput,
     viewerHandle?: string | null,
   ): Promise<DemoState["peerReviews"][number]>
+  assignReviewer(
+    input: AssignReviewerInput,
+    viewerHandle?: string | null,
+  ): Promise<ReviewerAssignment>
+  getViewerReviewAssignments(
+    viewerHandle?: string | null,
+  ): Promise<
+    Array<
+      ReviewerAssignment & { conferenceName: string; conferenceSlug: string; paperTitle: string }
+    >
+  >
+  submitRevision(input: SubmitRevisionInput, viewerHandle?: string | null): Promise<PaperVersion>
+  getPaperVersions(paperSlug: string): Promise<PaperVersion[]>
+  getPaperReviewSummary(paperSlug: string): Promise<
+    Array<{
+      conferenceName: string
+      submissionStatus: string
+      reviews: DemoState["peerReviews"]
+      revisionCount: number
+    }>
+  >
   getDailyDigest(viewerHandle?: string | null): Promise<DailyDigest>
   getOpportunities(viewerHandle?: string | null): Promise<Opportunity[]>
 }
@@ -770,11 +797,19 @@ class DemoRepository implements PapersRepository {
       strengths: parsed.strengths,
       concerns: parsed.concerns,
       recommendation: parsed.recommendation,
+      versionId: paper.latestVersion.id,
       createdAt: nowIso(),
     } satisfies DemoState["peerReviews"][number]
 
     state.peerReviews.unshift(review)
     submission.status = "under_review"
+
+    const assignment = state.reviewerAssignments.find(
+      (entry) => entry.submissionId === submission.id && entry.reviewerHandle === viewer.handle,
+    )
+    if (assignment) {
+      assignment.status = "completed"
+    }
     submission.reviewCount += 1
     const scores = state.peerReviews
       .filter((entry) => entry.submissionId === submission.id)
@@ -785,6 +820,183 @@ class DemoRepository implements PapersRepository {
     conference.reviewCount += 1
     await writeDemoState(state)
     return review
+  }
+
+  async assignReviewer(
+    input: AssignReviewerInput,
+    viewerHandle?: string | null,
+  ): Promise<ReviewerAssignment> {
+    const parsed = assignReviewerInputSchema.parse(input)
+    const state = await readDemoState()
+    const viewer = await this.getViewer(viewerHandle)
+
+    if (!viewer) {
+      throw new Error("A viewer is required to assign reviewers.")
+    }
+
+    const conference = state.conferences.find((entry) => entry.slug === parsed.conferenceSlug)
+    const submission = state.submissions.find((entry) => entry.id === parsed.submissionId)
+    if (!conference || !submission || submission.conferenceId !== conference.id) {
+      throw new Error("Submission not found for this conference.")
+    }
+
+    const paper = state.papers.find((entry) => entry.id === submission.paperId)
+    if (paper && paper.ownerId === parsed.reviewerHandle) {
+      throw new Error("Cannot assign paper author as reviewer.")
+    }
+
+    const existing = state.reviewerAssignments.find(
+      (assignment) =>
+        assignment.submissionId === submission.id &&
+        assignment.reviewerHandle === parsed.reviewerHandle,
+    )
+    if (existing) {
+      return existing
+    }
+
+    const reviewer = state.users.find((user) => user.handle === parsed.reviewerHandle)
+
+    const assignment: ReviewerAssignment = {
+      id: randomUUID(),
+      conferenceId: conference.id,
+      submissionId: submission.id,
+      reviewerHandle: parsed.reviewerHandle,
+      reviewerProfile: reviewer?.profile ?? null,
+      assignedAt: nowIso(),
+      status: "pending",
+    }
+
+    state.reviewerAssignments.push(assignment)
+    await writeDemoState(state)
+    return assignment
+  }
+
+  async getViewerReviewAssignments(
+    viewerHandle?: string | null,
+  ): Promise<
+    Array<
+      ReviewerAssignment & { conferenceName: string; conferenceSlug: string; paperTitle: string }
+    >
+  > {
+    const state = await readDemoState()
+    const viewer = await this.getViewer(viewerHandle)
+
+    if (!viewer) {
+      return []
+    }
+
+    return state.reviewerAssignments
+      .filter((assignment) => assignment.reviewerHandle === viewer.handle)
+      .map((assignment) => {
+        const conference = state.conferences.find((entry) => entry.id === assignment.conferenceId)
+        const submission = state.submissions.find((entry) => entry.id === assignment.submissionId)
+        const paper = submission
+          ? state.papers.find((entry) => entry.id === submission.paperId)
+          : null
+
+        return {
+          ...assignment,
+          conferenceName: conference?.name ?? "Unknown conference",
+          conferenceSlug: conference?.slug ?? "",
+          paperTitle: paper
+            ? paper.visibilityMode === "blind"
+              ? "Blind submission"
+              : paper.title
+            : "Unknown paper",
+        }
+      })
+      .sort((left, right) => {
+        const statusOrder = { pending: 0, accepted: 1, completed: 2, declined: 3 }
+        return statusOrder[left.status] - statusOrder[right.status]
+      })
+  }
+
+  async submitRevision(
+    input: SubmitRevisionInput,
+    viewerHandle?: string | null,
+  ): Promise<PaperVersion> {
+    const parsed = submitRevisionInputSchema.parse(input)
+    const state = await readDemoState()
+    const viewer = await this.getViewer(viewerHandle)
+
+    if (!viewer) {
+      throw new Error("A viewer is required to submit a revision.")
+    }
+
+    const paper = state.papers.find(
+      (entry) => entry.slug === parsed.paperSlug || entry.id === parsed.paperSlug,
+    )
+    if (!paper) {
+      throw new Error("Paper not found.")
+    }
+    if (paper.ownerId !== viewer.id) {
+      throw new Error("You can only revise your own papers.")
+    }
+
+    const version: PaperVersion = {
+      id: randomUUID(),
+      paperId: paper.id,
+      title: parsed.title,
+      abstract: parsed.abstract,
+      bodyMarkdown: parsed.bodyMarkdown,
+      createdAt: nowIso(),
+    }
+
+    paper.title = parsed.title
+    paper.abstract = parsed.abstract
+    paper.bodyMarkdown = parsed.bodyMarkdown
+    paper.updatedAt = nowIso()
+    paper.latestVersion = version
+
+    for (const submission of state.submissions) {
+      if (submission.paperId === paper.id) {
+        submission.revisionCount = (submission.revisionCount ?? 0) + 1
+        submission.paper = getPublicPaper(paper)
+      }
+    }
+
+    await writeDemoState(state)
+    return version
+  }
+
+  async getPaperVersions(paperSlug: string): Promise<PaperVersion[]> {
+    const state = await readDemoState()
+    const paper = state.papers.find((entry) => entry.slug === paperSlug || entry.id === paperSlug)
+    if (!paper) {
+      return []
+    }
+
+    return [paper.latestVersion]
+  }
+
+  async getPaperReviewSummary(paperSlug: string): Promise<
+    Array<{
+      conferenceName: string
+      submissionStatus: string
+      reviews: DemoState["peerReviews"]
+      revisionCount: number
+    }>
+  > {
+    const state = await readDemoState()
+    const paper = state.papers.find((entry) => entry.slug === paperSlug || entry.id === paperSlug)
+    if (!paper) {
+      return []
+    }
+
+    const relatedSubmissions = state.submissions.filter(
+      (submission) => submission.paperId === paper.id,
+    )
+
+    return relatedSubmissions.map((submission) => {
+      const conference = state.conferences.find((entry) => entry.id === submission.conferenceId)
+      const reviews = state.peerReviews.filter((review) => review.submissionId === submission.id)
+      return {
+        conferenceName: conference?.name ?? "Unknown conference",
+        submissionStatus: submission.status,
+        reviews,
+        revisionCount: submission.revisionCount ?? 0,
+      }
+    })
   }
 
   async getDailyDigest(viewerHandle?: string | null): Promise<DailyDigest> {

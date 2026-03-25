@@ -243,6 +243,7 @@ export const conferenceSubmissionSchema = z.object({
   submittedAt: z.string(),
   reviewCount: z.number().int().nonnegative(),
   averageScore: z.number().nullable(),
+  revisionCount: z.number().int().nonnegative().default(0),
 })
 export type ConferenceSubmission = z.infer<typeof conferenceSubmissionSchema>
 
@@ -257,9 +258,44 @@ export const peerReviewSchema = z.object({
   strengths: z.string(),
   concerns: z.string(),
   recommendation: reviewRecommendationSchema,
+  versionId: z.string().nullable().default(null),
   createdAt: z.string(),
 })
 export type PeerReview = z.infer<typeof peerReviewSchema>
+
+export const reviewerAssignmentStatusSchema = z.enum([
+  "pending",
+  "accepted",
+  "completed",
+  "declined",
+])
+export type ReviewerAssignmentStatus = z.infer<typeof reviewerAssignmentStatusSchema>
+
+export const reviewerAssignmentSchema = z.object({
+  id: z.string(),
+  conferenceId: z.string(),
+  submissionId: z.string(),
+  reviewerHandle: z.string(),
+  reviewerProfile: profileSchema.nullable(),
+  assignedAt: z.string(),
+  status: reviewerAssignmentStatusSchema,
+})
+export type ReviewerAssignment = z.infer<typeof reviewerAssignmentSchema>
+
+export const assignReviewerInputSchema = z.object({
+  conferenceSlug: z.string().min(1),
+  submissionId: z.string().min(1),
+  reviewerHandle: z.string().min(1),
+})
+export type AssignReviewerInput = z.infer<typeof assignReviewerInputSchema>
+
+export const submitRevisionInputSchema = z.object({
+  paperSlug: z.string().min(1),
+  title: z.string().min(8).max(160),
+  abstract: z.string().min(40).max(4000),
+  bodyMarkdown: z.string().min(80).max(50000),
+})
+export type SubmitRevisionInput = z.infer<typeof submitRevisionInputSchema>
 
 export const opportunityKindSchema = z.enum([
   "visiting_student",

@@ -2,7 +2,11 @@ import { createRepository } from "@papers/db"
 import { ActionButton, Pill, SectionCard } from "@papers/ui"
 import { notFound } from "next/navigation"
 import { getViewerHandleFromCookies } from "../../../lib/viewer"
-import { createPeerReviewAction, submitPaperToConferenceAction } from "../../actions"
+import {
+  assignReviewerAction,
+  createPeerReviewAction,
+  submitPaperToConferenceAction,
+} from "../../actions"
 
 const repository = createRepository()
 
@@ -80,6 +84,12 @@ export default async function ConferencePage(props: { params: Promise<{ conferen
                       {submission.averageScore ? `avg ${submission.averageScore}` : "no score yet"}
                     </Pill>
                     <Pill>{submission.reviewCount} reviews</Pill>
+                    {(submission.revisionCount ?? 0) > 0 ? (
+                      <Pill>
+                        {submission.revisionCount} revision
+                        {submission.revisionCount === 1 ? "" : "s"}
+                      </Pill>
+                    ) : null}
                   </div>
                 </div>
                 <p>{submission.paper.abstract}</p>
@@ -108,6 +118,21 @@ export default async function ConferencePage(props: { params: Promise<{ conferen
                     ))}
                   </div>
                 ) : null}
+
+                <form action={assignReviewerAction} className="stacked-form">
+                  <input name="conferenceSlug" type="hidden" value={detail.conference.slug} />
+                  <input name="submissionId" type="hidden" value={submission.id} />
+                  <label>
+                    Assign a reviewer by handle
+                    <input
+                      name="reviewerHandle"
+                      placeholder="e.g. maya-chen"
+                      required
+                      type="text"
+                    />
+                  </label>
+                  <ActionButton type="submit">Assign reviewer</ActionButton>
+                </form>
 
                 <form action={createPeerReviewAction} className="stacked-form">
                   <input name="conferenceSlug" type="hidden" value={detail.conference.slug} />
