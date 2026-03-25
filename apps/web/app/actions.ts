@@ -81,6 +81,16 @@ export async function createPaperAction(formData: FormData) {
     .map((value) => value.trim())
     .filter(Boolean)
 
+  const assetStorageKey = String(formData.get("assetStorageKey") ?? "").trim()
+  const asset = assetStorageKey
+    ? {
+        storageKey: assetStorageKey,
+        fileName: String(formData.get("assetFileName") ?? ""),
+        mimeType: String(formData.get("assetMimeType") ?? "application/pdf"),
+        fileSizeBytes: Number(formData.get("assetFileSizeBytes") ?? 0),
+      }
+    : undefined
+
   const paper = await repository.createPaper(
     {
       title: String(formData.get("title") ?? ""),
@@ -91,6 +101,7 @@ export async function createPaperAction(formData: FormData) {
       topicLabels,
     },
     await getViewerHandle(),
+    asset,
   )
 
   revalidatePath("/")
