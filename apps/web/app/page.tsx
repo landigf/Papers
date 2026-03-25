@@ -103,6 +103,11 @@ export default async function HomePage() {
                 <FeedCard entry={entry} key={entry.id} />
               ))}
             </div>
+            {feed.length === 0 && (
+              <p className="muted-copy">
+                No papers in the feed yet. Publish or save interests to get started.
+              </p>
+            )}
           </SectionCard>
 
           <SectionCard eyebrow="Trending" title="What is moving right now">
@@ -111,6 +116,7 @@ export default async function HomePage() {
                 <FeedCard entry={entry} key={entry.id} />
               ))}
             </div>
+            {trending.length === 0 && <p className="muted-copy">No trending papers right now.</p>}
           </SectionCard>
 
           <SectionCard
@@ -122,6 +128,7 @@ export default async function HomePage() {
                 <ConferenceCard conference={conference} key={conference.id} />
               ))}
             </div>
+            {conferences.length === 0 && <p className="muted-copy">No conferences listed yet.</p>}
           </SectionCard>
         </div>
 
@@ -155,6 +162,9 @@ export default async function HomePage() {
                 <OpportunityCard key={opportunity.id} opportunity={opportunity} />
               ))}
             </div>
+            {opportunities.length === 0 && (
+              <p className="muted-copy">No opportunities matched yet.</p>
+            )}
             <Link className="ghost-link" href="/opportunities">
               Browse all opportunities
             </Link>

@@ -62,6 +62,9 @@ export default async function ConferencePage(props: { params: Promise<{ conferen
           eyebrow="Submissions"
           title={`Peer review live (${detail.submissions.length})`}
         >
+          {detail.submissions.length === 0 && (
+            <p className="muted-copy">No submissions yet. Be the first to submit a paper.</p>
+          )}
           <div className="feed-stack">
             {detail.submissions.map((submission) => (
               <div className="submission-card" key={submission.id}>

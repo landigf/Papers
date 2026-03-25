@@ -106,6 +106,9 @@ export default async function PaperPage({ params }: { params: Promise<{ paperId:
               </article>
             ))}
           </div>
+          {detail.comments.length === 0 && (
+            <p className="muted-copy">No comments yet. Start the discussion.</p>
+          )}
         </SectionCard>
 
         <SectionCard eyebrow="Conferences" title="Where this work could get feedback next">

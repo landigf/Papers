@@ -15,6 +15,11 @@ export default async function OpportunitiesPage() {
             <OpportunityCard key={opportunity.id} opportunity={opportunity} />
           ))}
         </div>
+        {opportunities.length === 0 && (
+          <p className="muted-copy">
+            No opportunities matched yet. Save some interests to improve matches.
+          </p>
+        )}
       </div>
     </div>
   )

@@ -46,6 +46,13 @@ export default async function FeedPage({
               <FeedCard entry={entry} key={entry.id} />
             ))}
           </div>
+          {feed.length === 0 && (
+            <p className="muted-copy">
+              {params.q
+                ? "No papers match your search. Try different keywords."
+                : "No papers in the feed yet. Check back soon or add some interests."}
+            </p>
+          )}
         </SectionCard>
       </div>
       <aside className="content-side">
@@ -55,6 +62,7 @@ export default async function FeedPage({
               <FeedCard entry={entry} key={entry.id} />
             ))}
           </div>
+          {trending.length === 0 && <p className="muted-copy">No trending papers right now.</p>}
         </SectionCard>
         <SectionCard eyebrow="Conferences" title="Where feedback is happening">
           <div className="feed-stack">
@@ -62,6 +70,7 @@ export default async function FeedPage({
               <ConferenceCard conference={conference} key={conference.id} />
             ))}
           </div>
+          {conferences.length === 0 && <p className="muted-copy">No conferences listed yet.</p>}
         </SectionCard>
         {groups.length > 0 && (
           <SectionCard eyebrow="Groups" title="Your circles">
@@ -78,6 +87,9 @@ export default async function FeedPage({
               <OpportunityCard key={opportunity.id} opportunity={opportunity} />
             ))}
           </div>
+          {opportunities.length === 0 && (
+            <p className="muted-copy">No opportunities matched yet.</p>
+          )}
         </SectionCard>
       </aside>
     </div>

@@ -14,6 +14,9 @@ export default async function ConferencesPage() {
             <ConferenceCard conference={conference} key={conference.id} />
           ))}
         </div>
+        {conferences.length === 0 && (
+          <p className="muted-copy">No conferences listed yet. Check back soon.</p>
+        )}
       </div>
     </div>
   )

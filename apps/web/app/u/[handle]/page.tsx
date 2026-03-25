@@ -61,6 +61,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
               </a>
             ))}
           </div>
+          {detail.papers.length === 0 && <p className="muted-copy">No published papers yet.</p>}
         </SectionCard>
 
         <SectionCard eyebrow="Opportunity matches" title="Where this researcher could fit next">
@@ -69,6 +70,9 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
               <OpportunityCard key={opportunity.id} opportunity={opportunity} />
             ))}
           </div>
+          {opportunities.length === 0 && (
+            <p className="muted-copy">No opportunity matches right now.</p>
+          )}
         </SectionCard>
       </div>
     </div>

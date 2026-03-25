@@ -15,6 +15,9 @@ export default async function DigestPage() {
             <DigestSectionCard key={section.id} section={section} />
           ))}
         </div>
+        {digest.sections.length === 0 && (
+          <p className="muted-copy">Nothing in today's digest yet. Check back later.</p>
+        )}
       </div>
     </div>
   )
