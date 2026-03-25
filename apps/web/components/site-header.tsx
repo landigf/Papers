@@ -21,6 +21,7 @@ export function SiteHeader({
       </div>
       <nav className="site-nav">
         <Link href="/feed">Feed</Link>
+        <Link href="/groups">Groups</Link>
         <Link href="/conferences">Conferences</Link>
         <Link href="/digest">Digest</Link>
         <Link href="/opportunities">Opportunities</Link>

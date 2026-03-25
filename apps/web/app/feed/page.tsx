@@ -2,6 +2,7 @@ import { createRepository } from "@papers/db"
 import { SectionCard } from "@papers/ui"
 import { ConferenceCard } from "../../components/conference-card"
 import { FeedCard } from "../../components/feed-card"
+import { GroupCard } from "../../components/group-card"
 import { OpportunityCard } from "../../components/opportunity-card"
 import { getViewerHandleFromCookies } from "../../lib/viewer"
 
@@ -14,7 +15,7 @@ export default async function FeedPage({
 }) {
   const params = await searchParams
   const viewerHandle = await getViewerHandleFromCookies()
-  const [feed, trending, conferences, opportunities] = await Promise.all([
+  const [feed, trending, conferences, opportunities, groups] = await Promise.all([
     repository.getFeed({
       viewerHandle,
       query: params.q,
@@ -25,6 +26,7 @@ export default async function FeedPage({
     }),
     repository.listConferences(),
     repository.getOpportunities(viewerHandle),
+    repository.listGroups(viewerHandle),
   ])
 
   return (
@@ -61,6 +63,15 @@ export default async function FeedPage({
             ))}
           </div>
         </SectionCard>
+        {groups.length > 0 && (
+          <SectionCard eyebrow="Groups" title="Your circles">
+            <div className="feed-stack">
+              {groups.slice(0, 2).map((group) => (
+                <GroupCard group={group} key={group.id} />
+              ))}
+            </div>
+          </SectionCard>
+        )}
         <SectionCard eyebrow="Opportunities" title="Keep some serendipity">
           <div className="feed-stack">
             {opportunities.slice(0, 2).map((opportunity) => (

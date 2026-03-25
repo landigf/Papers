@@ -1,19 +1,29 @@
 import { randomUUID } from "node:crypto"
 import { getPapersConfig } from "@papers/config"
 import {
+  type AddToGroupReadingListInput,
+  addToGroupReadingListInputSchema,
   type Comment,
   type Conference,
   type ConferenceSubmission,
   type CreateCommentInput,
+  type CreateGroupAnnouncementInput,
+  type CreateGroupInput,
   type CreatePaperInput,
   type CreatePeerReviewInput,
   conferenceSubmissionSchema,
   createCommentInputSchema,
+  createGroupAnnouncementInputSchema,
+  createGroupInputSchema,
   createPaperInputSchema,
   createPeerReviewInputSchema,
   type DailyDigest,
   dailyDigestSchema,
   type FeedEntry,
+  type Group,
+  type GroupAnnouncement,
+  type GroupMember,
+  type GroupReadingListItem,
   type Opportunity,
   type Paper,
   type Profile,
@@ -46,6 +56,11 @@ import {
   conferences,
   conferenceTopics,
   follows,
+  groupAnnouncements,
+  groupMembers,
+  groupReadingListItems,
+  groups,
+  groupTopics,
   moderationFlags,
   paperAssets,
   papers,
@@ -69,6 +84,11 @@ export {
   conferences,
   conferenceTopics,
   follows,
+  groupAnnouncements,
+  groupMembers,
+  groupReadingListItems,
+  groups,
+  groupTopics,
   moderationFlags,
   paperAssets,
   papers,
@@ -95,6 +115,13 @@ export type ProfileDetail = {
   profile: Profile
   papers: PublicPaper[]
   isFollowedByViewer: boolean
+}
+
+export type GroupDetail = {
+  group: Group
+  members: GroupMember[]
+  announcements: GroupAnnouncement[]
+  readingList: GroupReadingListItem[]
 }
 
 export type ConferenceDetail = {
@@ -139,6 +166,18 @@ export interface PapersRepository {
   ): Promise<DemoState["peerReviews"][number]>
   getDailyDigest(viewerHandle?: string | null): Promise<DailyDigest>
   getOpportunities(viewerHandle?: string | null): Promise<Opportunity[]>
+  listGroups(viewerHandle?: string | null): Promise<Group[]>
+  getGroupBySlug(slug: string, viewerHandle?: string | null): Promise<GroupDetail | null>
+  createGroup(input: CreateGroupInput, viewerHandle?: string | null): Promise<Group>
+  toggleGroupMembership(groupSlug: string, viewerHandle?: string | null): Promise<boolean>
+  createGroupAnnouncement(
+    input: CreateGroupAnnouncementInput,
+    viewerHandle?: string | null,
+  ): Promise<GroupAnnouncement>
+  addToGroupReadingList(
+    input: AddToGroupReadingListInput,
+    viewerHandle?: string | null,
+  ): Promise<GroupReadingListItem>
 }
 
 async function getViewerHandle(viewerHandle?: string | null): Promise<string> {
@@ -876,6 +915,213 @@ class DemoRepository implements PapersRepository {
     return state.opportunities
       .map((opportunity) => matchOpportunity(opportunity, viewer, state))
       .sort((left, right) => right.matchReasons.length - left.matchReasons.length)
+  }
+
+  async listGroups(viewerHandle?: string | null): Promise<Group[]> {
+    const state = await readDemoState()
+    const viewer = await this.getViewer(viewerHandle)
+
+    return state.groups
+      .filter((group) => {
+        if (group.visibility === "public") return true
+        if (!viewer) return false
+        return state.groupMembers.some((m) => m.groupId === group.id && m.userId === viewer.id)
+      })
+      .map((group) => ({
+        ...group,
+        memberCount: state.groupMembers.filter((m) => m.groupId === group.id).length,
+        paperCount: state.groupReadingListItems.filter((i) => i.groupId === group.id).length,
+        announcementCount: state.groupAnnouncements.filter((a) => a.groupId === group.id).length,
+        isViewerMember: viewer
+          ? state.groupMembers.some((m) => m.groupId === group.id && m.userId === viewer.id)
+          : false,
+      }))
+  }
+
+  async getGroupBySlug(slug: string, viewerHandle?: string | null): Promise<GroupDetail | null> {
+    const state = await readDemoState()
+    const viewer = await this.getViewer(viewerHandle)
+    const group = state.groups.find((g) => g.slug === slug || g.id === slug)
+
+    if (!group) return null
+
+    if (
+      group.visibility === "private" &&
+      (!viewer || !state.groupMembers.some((m) => m.groupId === group.id && m.userId === viewer.id))
+    ) {
+      return null
+    }
+
+    const members = state.groupMembers.filter((m) => m.groupId === group.id)
+    const announcements = state.groupAnnouncements
+      .filter((a) => a.groupId === group.id)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    const readingList = state.groupReadingListItems.filter((i) => i.groupId === group.id)
+
+    return {
+      group: {
+        ...group,
+        memberCount: members.length,
+        paperCount: readingList.length,
+        announcementCount: announcements.length,
+        isViewerMember: viewer ? members.some((m) => m.userId === viewer.id) : false,
+      },
+      members,
+      announcements,
+      readingList,
+    }
+  }
+
+  async createGroup(input: CreateGroupInput, viewerHandle?: string | null): Promise<Group> {
+    const parsed = createGroupInputSchema.parse(input)
+    const state = await readDemoState()
+    const viewer = await this.getViewer(viewerHandle)
+
+    if (!viewer) {
+      throw new Error("A viewer is required to create a group.")
+    }
+
+    const createdAt = nowIso()
+    const group: Group = {
+      id: randomUUID(),
+      slug: `${slugify(parsed.name)}-${Math.random().toString(36).slice(2, 6)}`,
+      name: parsed.name,
+      description: parsed.description,
+      visibility: parsed.visibility,
+      createdBy: viewer.profile,
+      topics: deriveTopics(parsed.topicLabels),
+      memberCount: 1,
+      paperCount: 0,
+      announcementCount: 0,
+      isViewerMember: true,
+      createdAt,
+    }
+
+    const membership: GroupMember = {
+      id: randomUUID(),
+      groupId: group.id,
+      userId: viewer.id,
+      profile: viewer.profile,
+      role: "admin",
+      joinedAt: createdAt,
+    }
+
+    state.groups.unshift(group)
+    state.groupMembers.push(membership)
+    await writeDemoState(state)
+    return group
+  }
+
+  async toggleGroupMembership(groupSlug: string, viewerHandle?: string | null): Promise<boolean> {
+    const state = await readDemoState()
+    const viewer = await this.getViewer(viewerHandle)
+
+    if (!viewer) return false
+
+    const group = state.groups.find((g) => g.slug === groupSlug || g.id === groupSlug)
+    if (!group) return false
+
+    const existingIndex = state.groupMembers.findIndex(
+      (m) => m.groupId === group.id && m.userId === viewer.id,
+    )
+
+    if (existingIndex >= 0) {
+      const existing = state.groupMembers[existingIndex]
+      if (existing && existing.role === "admin") {
+        throw new Error("Group admins cannot leave their own group.")
+      }
+      state.groupMembers.splice(existingIndex, 1)
+      await writeDemoState(state)
+      return false
+    }
+
+    state.groupMembers.push({
+      id: randomUUID(),
+      groupId: group.id,
+      userId: viewer.id,
+      profile: viewer.profile,
+      role: "member",
+      joinedAt: nowIso(),
+    })
+    await writeDemoState(state)
+    return true
+  }
+
+  async createGroupAnnouncement(
+    input: CreateGroupAnnouncementInput,
+    viewerHandle?: string | null,
+  ): Promise<GroupAnnouncement> {
+    const parsed = createGroupAnnouncementInputSchema.parse(input)
+    const state = await readDemoState()
+    const viewer = await this.getViewer(viewerHandle)
+
+    if (!viewer) {
+      throw new Error("A viewer is required to post an announcement.")
+    }
+
+    const group = state.groups.find((g) => g.slug === parsed.groupSlug)
+    if (!group) throw new Error("Group not found.")
+
+    const isMember = state.groupMembers.some(
+      (m) => m.groupId === group.id && m.userId === viewer.id,
+    )
+    if (!isMember) throw new Error("You must be a group member to post announcements.")
+
+    const announcement: GroupAnnouncement = {
+      id: randomUUID(),
+      groupId: group.id,
+      authorProfile: viewer.profile,
+      title: parsed.title,
+      body: parsed.body,
+      createdAt: nowIso(),
+    }
+
+    state.groupAnnouncements.unshift(announcement)
+    await writeDemoState(state)
+    return announcement
+  }
+
+  async addToGroupReadingList(
+    input: AddToGroupReadingListInput,
+    viewerHandle?: string | null,
+  ): Promise<GroupReadingListItem> {
+    const parsed = addToGroupReadingListInputSchema.parse(input)
+    const state = await readDemoState()
+    const viewer = await this.getViewer(viewerHandle)
+
+    if (!viewer) {
+      throw new Error("A viewer is required to add to the reading list.")
+    }
+
+    const group = state.groups.find((g) => g.slug === parsed.groupSlug)
+    if (!group) throw new Error("Group not found.")
+
+    const isMember = state.groupMembers.some(
+      (m) => m.groupId === group.id && m.userId === viewer.id,
+    )
+    if (!isMember) throw new Error("You must be a group member to add to the reading list.")
+
+    const paper = state.papers.find((p) => p.slug === parsed.paperSlug || p.id === parsed.paperSlug)
+    if (!paper) throw new Error("Paper not found.")
+
+    const existing = state.groupReadingListItems.find(
+      (i) => i.groupId === group.id && i.paperId === paper.id,
+    )
+    if (existing) return existing
+
+    const item: GroupReadingListItem = {
+      id: randomUUID(),
+      groupId: group.id,
+      paperId: paper.id,
+      paper: getPublicPaper(paper),
+      addedBy: viewer.profile,
+      note: parsed.note ?? null,
+      addedAt: nowIso(),
+    }
+
+    state.groupReadingListItems.unshift(item)
+    await writeDemoState(state)
+    return item
   }
 }
 

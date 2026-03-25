@@ -25,4 +25,5 @@ Papers is a web-first research sharing platform with a single primary runtime in
 - Blind posts store internal ownership but must never expose author identity publicly.
 - No private or blind-mode content is sent to Grok.
 - Public feed ranking must be deterministic and explainable.
-- Groups, DMs, collaborator requests, and opportunities stay outside the v1 execution path until promoted from backlog.
+- Groups (research groups and lab circles) are now in the execution path: create/join groups, group feed, shared reading lists, group announcements.
+- DMs, collaborator requests stay outside the v1 execution path until promoted from backlog.

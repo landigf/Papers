@@ -192,6 +192,65 @@ export async function submitPaperToConferenceAction(formData: FormData) {
   redirect(`/conferences/${conferenceSlug}`)
 }
 
+export async function createGroupAction(formData: FormData) {
+  const topicLabels = String(formData.get("topicLabels") ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean)
+
+  const group = await repository.createGroup(
+    {
+      name: String(formData.get("name") ?? ""),
+      description: String(formData.get("description") ?? ""),
+      visibility:
+        String(formData.get("visibility") ?? "public") === "private" ? "private" : "public",
+      topicLabels,
+    },
+    await getViewerHandle(),
+  )
+
+  revalidatePath("/groups")
+  redirect(`/groups/${group.slug}`)
+}
+
+export async function toggleGroupMembershipAction(formData: FormData) {
+  const groupSlug = String(formData.get("groupSlug") ?? "")
+  await repository.toggleGroupMembership(groupSlug, await getViewerHandle())
+  revalidatePath("/groups")
+  revalidatePath(`/groups/${groupSlug}`)
+  redirect(`/groups/${groupSlug}`)
+}
+
+export async function createGroupAnnouncementAction(formData: FormData) {
+  const groupSlug = String(formData.get("groupSlug") ?? "")
+  await repository.createGroupAnnouncement(
+    {
+      groupSlug,
+      title: String(formData.get("title") ?? "").trim(),
+      body: String(formData.get("body") ?? "").trim(),
+    },
+    await getViewerHandle(),
+  )
+
+  revalidatePath(`/groups/${groupSlug}`)
+  redirect(`/groups/${groupSlug}`)
+}
+
+export async function addToGroupReadingListAction(formData: FormData) {
+  const groupSlug = String(formData.get("groupSlug") ?? "")
+  await repository.addToGroupReadingList(
+    {
+      groupSlug,
+      paperSlug: String(formData.get("paperSlug") ?? ""),
+      note: String(formData.get("note") ?? "").trim() || undefined,
+    },
+    await getViewerHandle(),
+  )
+
+  revalidatePath(`/groups/${groupSlug}`)
+  redirect(`/groups/${groupSlug}`)
+}
+
 export async function createPeerReviewAction(formData: FormData) {
   const conferenceSlug = String(formData.get("conferenceSlug") ?? "")
   await repository.createPeerReview(

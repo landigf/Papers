@@ -321,6 +321,94 @@ export const peerReviews = pgTable(
   (table) => [index("peer_review_submission_idx").on(table.submissionId)],
 )
 
+export const groups = pgTable(
+  "group",
+  {
+    id: text("id").primaryKey(),
+    slug: text("slug").notNull(),
+    name: text("name").notNull(),
+    description: text("description").notNull(),
+    visibility: text("visibility").notNull().default("public"),
+    createdById: text("created_by_id")
+      .notNull()
+      .references(() => authUsers.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex("group_slug_idx").on(table.slug)],
+)
+
+export const groupTopics = pgTable(
+  "group_topic",
+  {
+    groupId: text("group_id")
+      .notNull()
+      .references(() => groups.id, { onDelete: "cascade" }),
+    topicId: text("topic_id")
+      .notNull()
+      .references(() => topics.id, { onDelete: "cascade" }),
+  },
+  (table) => [primaryKey({ columns: [table.groupId, table.topicId] })],
+)
+
+export const groupMembers = pgTable(
+  "group_member",
+  {
+    id: text("id").primaryKey(),
+    groupId: text("group_id")
+      .notNull()
+      .references(() => groups.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => authUsers.id, { onDelete: "cascade" }),
+    role: text("role").notNull().default("member"),
+    joinedAt: timestamp("joined_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("group_member_unique_idx").on(table.groupId, table.userId),
+    index("group_member_group_idx").on(table.groupId),
+  ],
+)
+
+export const groupAnnouncements = pgTable(
+  "group_announcement",
+  {
+    id: text("id").primaryKey(),
+    groupId: text("group_id")
+      .notNull()
+      .references(() => groups.id, { onDelete: "cascade" }),
+    authorId: text("author_id")
+      .notNull()
+      .references(() => authUsers.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("group_announcement_group_idx").on(table.groupId)],
+)
+
+export const groupReadingListItems = pgTable(
+  "group_reading_list_item",
+  {
+    id: text("id").primaryKey(),
+    groupId: text("group_id")
+      .notNull()
+      .references(() => groups.id, { onDelete: "cascade" }),
+    paperId: text("paper_id")
+      .notNull()
+      .references(() => papers.id, { onDelete: "cascade" }),
+    addedById: text("added_by_id")
+      .notNull()
+      .references(() => authUsers.id, { onDelete: "cascade" }),
+    note: text("note"),
+    addedAt: timestamp("added_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("group_reading_list_unique_idx").on(table.groupId, table.paperId),
+    index("group_reading_list_group_idx").on(table.groupId),
+  ],
+)
+
 export const researchOpportunities = pgTable(
   "research_opportunity",
   {
