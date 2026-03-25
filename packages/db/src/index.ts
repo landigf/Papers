@@ -46,6 +46,9 @@ import {
   readDemoState,
   writeDemoState,
 } from "./demo-store"
+
+export { type CacheStats, getCacheStats, runWithCacheCounter } from "./cache-counter"
+
 import {
   authAccounts,
   authSessions,
