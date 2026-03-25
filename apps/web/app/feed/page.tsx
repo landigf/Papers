@@ -52,13 +52,15 @@ export default async function FeedPage({
         </SectionCard>
       </div>
       <aside className="content-side">
-        <SectionCard eyebrow="Trending" title="Momentum right now">
-          <div className="feed-stack">
-            {trending.map((entry) => (
-              <FeedCard entry={entry} key={entry.id} />
-            ))}
-          </div>
-        </SectionCard>
+        {trending.length > 0 && (
+          <SectionCard eyebrow="Trending" title="Momentum right now">
+            <div className="feed-stack">
+              {trending.map((entry) => (
+                <FeedCard entry={entry} key={entry.id} />
+              ))}
+            </div>
+          </SectionCard>
+        )}
         <SectionCard eyebrow="Conferences" title="Where feedback is happening">
           <div className="feed-stack">
             {conferences.slice(0, 2).map((conference) => (

@@ -108,13 +108,15 @@ export default async function HomePage() {
             </div>
           </SectionCard>
 
-          <SectionCard eyebrow="Trending" title="What is moving right now">
-            <div className="feed-stack">
-              {trending.map((entry) => (
-                <FeedCard entry={entry} key={entry.id} />
-              ))}
-            </div>
-          </SectionCard>
+          {trending.length > 0 && (
+            <SectionCard eyebrow="Trending" title="What is moving right now">
+              <div className="feed-stack">
+                {trending.map((entry) => (
+                  <FeedCard entry={entry} key={entry.id} />
+                ))}
+              </div>
+            </SectionCard>
+          )}
 
           <SectionCard
             eyebrow="Conference flow"
