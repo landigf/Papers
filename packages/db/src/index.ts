@@ -882,3 +882,21 @@ class DemoRepository implements PapersRepository {
 export function createRepository(): PapersRepository {
   return new DemoRepository()
 }
+
+export async function pingDatabase(
+  databaseUrl: string,
+): Promise<{ ok: boolean; latencyMs: number; error?: string }> {
+  const { default: pg } = await import("pg")
+  const pool = new pg.Pool({ connectionString: databaseUrl, max: 1, connectionTimeoutMillis: 5000 })
+  const start = performance.now()
+  try {
+    const result = await pool.query("SELECT 1 AS ping")
+    const latencyMs = Math.round(performance.now() - start)
+    return { ok: result.rows[0]?.ping === 1, latencyMs }
+  } catch (err) {
+    const latencyMs = Math.round(performance.now() - start)
+    return { ok: false, latencyMs, error: err instanceof Error ? err.message : String(err) }
+  } finally {
+    await pool.end()
+  }
+}
