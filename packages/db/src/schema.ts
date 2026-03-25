@@ -409,6 +409,23 @@ export const groupReadingListItems = pgTable(
   ],
 )
 
+export const paperViews = pgTable(
+  "paper_view",
+  {
+    id: text("id").primaryKey(),
+    paperId: text("paper_id")
+      .notNull()
+      .references(() => papers.id, { onDelete: "cascade" }),
+    viewerHash: text("viewer_hash").notNull(),
+    referrerDomain: text("referrer_domain"),
+    viewedAt: timestamp("viewed_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("paper_view_paper_idx").on(table.paperId),
+    index("paper_view_hash_idx").on(table.paperId, table.viewerHash),
+  ],
+)
+
 export const researchOpportunities = pgTable(
   "research_opportunity",
   {

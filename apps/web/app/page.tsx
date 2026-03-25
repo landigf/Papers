@@ -33,29 +33,26 @@ export default async function HomePage() {
     <div className="page-grid">
       <section className="hero-panel">
         <div className="hero-copy">
-          <span className="hero-kicker">Research, without dumb scrolling</span>
-          <h1>
-            One place to publish, review, discover, and collaborate before the paper goes cold.
-          </h1>
+          <span className="hero-kicker">Research sharing, without the noise</span>
+          <h1>Publish. Review. Discover. Collaborate.</h1>
           <p>
-            Papers is built to accelerate research, not personal branding. It starts with a
-            research-first feed, paper publishing, blind-safe submissions, conference workflows,
-            peer review, trending work, and a daily briefing tuned to interests without sealing you
-            into them forever.
+            Papers combines the best of arXiv (preprint hosting, BibTeX citations, categories),
+            LinkedIn (professional profiles, social feed, connections), and GitHub (stars,
+            discussions, version history) — purpose-built for researchers.
           </p>
           <div className="hero-actions">
             <Link className="primary-link" href="/feed">
               Explore the feed
             </Link>
-            <Link className="secondary-link" href="/conferences">
-              Join a conference call
-            </Link>
             <Link className="secondary-link" href="/papers/new">
               Publish a paper
             </Link>
+            <Link className="secondary-link" href="/conferences">
+              Conferences
+            </Link>
           </div>
           {session.viewer ? (
-            <div className="pill-row">
+            <div className="pill-row" style={{ marginTop: "14px" }}>
               {session.viewer.profile.researchInterests.map((interest) => (
                 <Pill key={interest}>{interest}</Pill>
               ))}
@@ -85,31 +82,19 @@ export default async function HomePage() {
 
       <div className="content-columns">
         <div className="content-main">
-          <SectionCard eyebrow="Why this product" title="The first slice">
-            <ul className="reason-list">
-              <li>Paper-first publishing with public and blind visibility modes.</li>
-              <li>
-                Feed ranking from interests, topics, recency, active discussion, and review signal.
-              </li>
-              <li>
-                Profiles, comments, follows, stars, saved interests, and conference review loops.
-              </li>
-              <li>
-                Grok is server-side only, and blind/private content never crosses that boundary.
-              </li>
-            </ul>
-          </SectionCard>
-
-          <SectionCard eyebrow="Feed preview" title="What researchers will actually see">
+          <SectionCard eyebrow="Latest" title="Recent papers">
             <div className="feed-stack">
-              {feed.slice(0, 2).map((entry) => (
+              {feed.slice(0, 3).map((entry) => (
                 <FeedCard entry={entry} key={entry.id} />
               ))}
             </div>
+            <Link className="ghost-link" href="/feed" style={{ marginTop: "12px", display: "inline-block" }}>
+              View full feed →
+            </Link>
           </SectionCard>
 
           {trending.length > 0 && (
-            <SectionCard eyebrow="Trending" title="What is moving right now">
+            <SectionCard eyebrow="Trending" title="Gaining momentum">
               <div className="feed-stack">
                 {trending.map((entry) => (
                   <FeedCard entry={entry} key={entry.id} />
@@ -118,25 +103,25 @@ export default async function HomePage() {
             </SectionCard>
           )}
 
-          <SectionCard
-            eyebrow="Conference flow"
-            title="Competition and peer review live in-product"
-          >
+          <SectionCard eyebrow="Conferences" title="Calls for papers">
             <div className="feed-stack">
               {conferences.slice(0, 2).map((conference) => (
                 <ConferenceCard conference={conference} key={conference.id} />
               ))}
             </div>
+            <Link className="ghost-link" href="/conferences" style={{ marginTop: "12px", display: "inline-block" }}>
+              Browse all conferences →
+            </Link>
           </SectionCard>
         </div>
 
         <aside className="content-side">
-          <SectionCard eyebrow="Saved interests" title="Teach Papers what matters">
+          <SectionCard eyebrow="Interests" title="Personalize your feed">
             <form action={saveInterestAction} className="stacked-form">
               <input name="redirectTo" type="hidden" value="/" />
               <label>
                 Add an interest
-                <input name="label" placeholder="agent evaluation" required />
+                <input name="label" placeholder="e.g. agent evaluation" required />
               </label>
               <ActionButton type="submit">Save interest</ActionButton>
             </form>
@@ -150,22 +135,22 @@ export default async function HomePage() {
               ))}
             </div>
             <Link className="ghost-link" href="/digest">
-              Open full digest
+              Open full digest →
             </Link>
           </SectionCard>
 
-          <SectionCard eyebrow="Matched opportunities" title="Not just inside your current lane">
+          <SectionCard eyebrow="Opportunities" title="Research positions">
             <div className="feed-stack">
               {opportunities.slice(0, 2).map((opportunity) => (
                 <OpportunityCard key={opportunity.id} opportunity={opportunity} />
               ))}
             </div>
             <Link className="ghost-link" href="/opportunities">
-              Browse all opportunities
+              Browse all →
             </Link>
           </SectionCard>
 
-          <SectionCard eyebrow="Jarvis roadmap" title="What comes next">
+          <SectionCard eyebrow="Platform" title="What comes next">
             <h3>Now</h3>
             <ul className="reason-list">
               {roadmap.now.map((item) => (
@@ -176,14 +161,6 @@ export default async function HomePage() {
             <ul className="reason-list">
               {roadmap.tonight.map((item) => (
                 <li key={item}>{item}</li>
-              ))}
-            </ul>
-            <h3>Proposed by Jarvis</h3>
-            <ul className="reason-list">
-              {roadmap.proposedByJarvis.map((idea) => (
-                <li key={idea.id}>
-                  <strong>{idea.label}</strong>: {idea.summary}
-                </li>
               ))}
             </ul>
           </SectionCard>

@@ -32,3 +32,38 @@ export function ActionButton({
     </button>
   )
 }
+
+/** LinkedIn-style avatar with initials fallback */
+export function Avatar({
+  name,
+  size = "md",
+}: {
+  name: string
+  size?: "sm" | "md" | "lg"
+}) {
+  const initials = name
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase()
+  const sizeClass = size === "sm" ? "avatar-sm" : size === "lg" ? "avatar-lg" : ""
+  return <div className={`avatar ${sizeClass}`}>{initials}</div>
+}
+
+/** GitHub-style stat badge */
+export function StatBadge({
+  icon,
+  value,
+  accent,
+}: {
+  icon: string
+  value: number | string
+  accent?: boolean
+}) {
+  return (
+    <span className={`stat-badge ${accent ? "stat-badge-accent" : ""}`}>
+      {icon} {value}
+    </span>
+  )
+}

@@ -35,22 +35,30 @@ export default async function FeedPage({
   return (
     <div className="content-columns">
       <div className="content-main">
-        <SectionCard eyebrow="Feed" title="Research you may actually care about">
+        <SectionCard eyebrow="Feed" title="Research you care about">
           <form className="search-form" method="GET">
             <input
               defaultValue={params.q ?? ""}
               name="q"
-              placeholder="Search by topic, abstract, or title"
+              placeholder="Search by topic, abstract, or title…"
             />
             <button type="submit">Search</button>
           </form>
+        </SectionCard>
+
+        {feed.length === 0 ? (
+          <div className="empty-state">
+            <p>No papers match your search. Try broadening your terms or explore trending work.</p>
+          </div>
+        ) : (
           <div className="feed-stack">
             {feed.map((entry) => (
               <FeedCard entry={entry} key={entry.id} />
             ))}
           </div>
-        </SectionCard>
+        )}
       </div>
+
       <aside className="content-side">
         {trending.length > 0 && (
           <SectionCard eyebrow="Trending" title="Momentum right now">
@@ -61,7 +69,7 @@ export default async function FeedPage({
             </div>
           </SectionCard>
         )}
-        <SectionCard eyebrow="Conferences" title="Where feedback is happening">
+        <SectionCard eyebrow="Conferences" title="Open calls">
           <div className="feed-stack">
             {conferences.slice(0, 2).map((conference) => (
               <ConferenceCard conference={conference} key={conference.id} />
@@ -77,7 +85,7 @@ export default async function FeedPage({
             </div>
           </SectionCard>
         )}
-        <SectionCard eyebrow="Opportunities" title="Keep some serendipity">
+        <SectionCard eyebrow="Opportunities" title="Serendipity">
           <div className="feed-stack">
             {opportunities.slice(0, 2).map((opportunity) => (
               <OpportunityCard key={opportunity.id} opportunity={opportunity} />

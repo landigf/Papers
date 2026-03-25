@@ -14,21 +14,24 @@ export function SiteHeader({
         <Link className="brand-mark" href="/">
           Papers
         </Link>
-        <p className="brand-copy">
-          A place where research is shared, discussed, and improved before it gets flattened into
-          professional theatre.
-        </p>
       </div>
       <nav className="site-nav">
         <Link href="/feed">Feed</Link>
-        <Link href="/groups">Groups</Link>
+        <Link href="/papers/new">Publish</Link>
         <Link href="/conferences">Conferences</Link>
+        <Link href="/groups">Groups</Link>
         <Link href="/digest">Digest</Link>
-        <Link href="/opportunities">Opportunities</Link>
-        <Link href="/papers/new">New post</Link>
-        {viewer ? <Link href={`/u/${viewer.handle}`}>Profile</Link> : null}
-        <Link href="/settings/account">Account</Link>
-        <span className={`mode-chip mode-chip-${authMode}`}>{authMode} mode</span>
+        <Link href="/opportunities">Jobs</Link>
+        {viewer ? (
+          <Link href={`/u/${viewer.handle}`}>
+            {viewer.profile.displayName}
+          </Link>
+        ) : (
+          <Link href="/sign-in">Sign in</Link>
+        )}
+        <Link href="/settings/account">Settings</Link>
+        <Link href="/privacy">Privacy</Link>
+        <span className={`mode-chip mode-chip-${authMode}`}>{authMode}</span>
       </nav>
     </header>
   )
