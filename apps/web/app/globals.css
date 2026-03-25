@@ -311,6 +311,55 @@ select {
   margin: 6px 0 0;
 }
 
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.08;
+  }
+  50% {
+    opacity: 0.16;
+  }
+}
+
+.skeleton {
+  border-radius: 10px;
+  background: var(--text);
+  animation: skeleton-pulse 1.6s ease-in-out infinite;
+}
+
+.skeleton-eyebrow {
+  height: 12px;
+  width: 72px;
+  margin-bottom: 4px;
+}
+
+.skeleton-heading {
+  height: 22px;
+  width: 200px;
+  margin: 12px 0;
+}
+
+.skeleton-input {
+  height: 48px;
+}
+
+.skeleton-textarea-sm {
+  height: 120px;
+}
+
+.skeleton-textarea-lg {
+  height: 240px;
+}
+
+.skeleton-text {
+  height: 14px;
+}
+
+.skeleton-button {
+  height: 48px;
+  width: 160px;
+}
+
 @media (max-width: 920px) {
   .site-header,
   .hero-panel,
