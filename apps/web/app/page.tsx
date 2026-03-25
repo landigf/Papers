@@ -12,19 +12,22 @@ const repository = createRepository()
 
 export default async function HomePage() {
   const session = await getSessionContext()
-  const [roadmap, feed, trending, conferences, digest, opportunities] = await Promise.all([
+  const [roadmap, feed, allTrending, conferences, digest, opportunities] = await Promise.all([
     repository.getRoadmap(),
     repository.getFeed({
       viewerHandle: session.viewer?.handle,
     }),
     repository.listTrendingPapers({
       viewerHandle: session.viewer?.handle,
-      limit: 3,
+      limit: 6,
     }),
     repository.listConferences(),
     repository.getDailyDigest(session.viewer?.handle),
     repository.getOpportunities(session.viewer?.handle),
   ])
+
+  const feedPaperIds = new Set(feed.map((entry) => entry.paper.id))
+  const trending = allTrending.filter((entry) => !feedPaperIds.has(entry.paper.id)).slice(0, 3)
 
   return (
     <div className="page-grid">

@@ -15,19 +15,22 @@ export default async function FeedPage({
 }) {
   const params = await searchParams
   const viewerHandle = await getViewerHandleFromCookies()
-  const [feed, trending, conferences, opportunities, groups] = await Promise.all([
+  const [feed, allTrending, conferences, opportunities, groups] = await Promise.all([
     repository.getFeed({
       viewerHandle,
       query: params.q,
     }),
     repository.listTrendingPapers({
       viewerHandle,
-      limit: 3,
+      limit: 6,
     }),
     repository.listConferences(),
     repository.getOpportunities(viewerHandle),
     repository.listGroups(viewerHandle),
   ])
+
+  const feedPaperIds = new Set(feed.map((entry) => entry.paper.id))
+  const trending = allTrending.filter((entry) => !feedPaperIds.has(entry.paper.id)).slice(0, 3)
 
   return (
     <div className="content-columns">
