@@ -2,7 +2,6 @@ import type { NextConfig } from "next"
 
 const nextConfig: NextConfig = {
   basePath: "/papers",
-  reactCompiler: false,
   transpilePackages: [
     "@papers/ai",
     "@papers/auth",
@@ -11,6 +10,7 @@ const nextConfig: NextConfig = {
     "@papers/db",
     "@papers/ui",
   ],
+  serverExternalPackages: ["better-auth", "drizzle-orm", "pg"],
 }
 
 export default nextConfig
