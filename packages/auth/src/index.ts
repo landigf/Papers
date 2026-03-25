@@ -52,9 +52,9 @@ function getManagedAuth() {
           after: async (account) => {
             if (account.providerId === "orcid" && account.accountId) {
               await db
-                .update(profiles)
+                .update(profiles as never)
                 .set({ orcid: account.accountId })
-                .where(eq(profiles.userId, account.userId))
+                .where(eq(profiles.userId as never, account.userId))
             }
           },
         },
