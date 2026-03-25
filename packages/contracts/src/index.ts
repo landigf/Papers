@@ -181,6 +181,43 @@ export const safeAiPayloadSchema = z.object({
 })
 export type SafeAiPayload = z.infer<typeof safeAiPayloadSchema>
 
+export const tagExtractionResultSchema = z.object({
+  tags: z
+    .array(
+      z.object({
+        label: z.string(),
+        slug: z.string(),
+      }),
+    )
+    .max(8),
+})
+export type TagExtractionResult = z.infer<typeof tagExtractionResultSchema>
+
+/** JSON Schema sent to the Grok Responses API for structured output. */
+export const tagExtractionJsonSchema = {
+  name: "tag_extraction",
+  strict: true,
+  schema: {
+    type: "object",
+    properties: {
+      tags: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            label: { type: "string" },
+            slug: { type: "string" },
+          },
+          required: ["label", "slug"],
+          additionalProperties: false,
+        },
+      },
+    },
+    required: ["tags"],
+    additionalProperties: false,
+  },
+} as const
+
 export const opportunityIdeaSchema = z.object({
   id: z.string(),
   label: z.string(),
