@@ -5,6 +5,10 @@ import type {
   Comment,
   Conference,
   ConferenceSubmission,
+  Group,
+  GroupAnnouncement,
+  GroupMember,
+  GroupReadingListItem,
   Opportunity,
   Paper,
   PaperAsset,
@@ -29,6 +33,10 @@ export type DemoState = {
   submissions: ConferenceSubmission[]
   peerReviews: PeerReview[]
   opportunities: Opportunity[]
+  groups: Group[]
+  groupMembers: GroupMember[]
+  groupAnnouncements: GroupAnnouncement[]
+  groupReadingListItems: GroupReadingListItem[]
 }
 
 function nowIso(): string {
@@ -206,6 +214,30 @@ function createOpportunity(input: {
     topics: input.topics,
     url: input.url ?? null,
     matchReasons: [],
+  }
+}
+
+function createGroup(input: {
+  id: string
+  name: string
+  description: string
+  visibility: Group["visibility"]
+  createdBy: User
+  topics: Topic[]
+}): Group {
+  return {
+    id: input.id,
+    slug: slugify(input.name),
+    name: input.name,
+    description: input.description,
+    visibility: input.visibility,
+    createdBy: input.createdBy.profile,
+    topics: input.topics,
+    memberCount: 0,
+    paperCount: 0,
+    announcementCount: 0,
+    isViewerMember: false,
+    createdAt: nowIso(),
   }
 }
 
@@ -497,6 +529,134 @@ function createInitialState(): DemoState {
     }),
   ]
 
+  const demoGroups = [
+    createGroup({
+      id: "group_ml_systems",
+      name: "ML Systems Lab Circle",
+      description:
+        "A working group for researchers building and evaluating machine learning systems, agents, and infrastructure. Share drafts, reading lists, and open problems.",
+      visibility: "public",
+      createdBy: gennaro,
+      topics: [topics.agents, topics.evaluation, topics.researchCollaboration],
+    }),
+    createGroup({
+      id: "group_bio_discovery",
+      name: "Computational Biology Discovery",
+      description:
+        "Cross-disciplinary circle connecting computational biology, optimization, and scientific discovery. Private space for early-stage ideas and collaboration.",
+      visibility: "private",
+      createdBy: amina,
+      topics: [topics.computationalBiology, topics.scientificDiscovery],
+    }),
+  ]
+
+  const demoGroupMembers: GroupMember[] = [
+    {
+      id: "gm_1",
+      groupId: "group_ml_systems",
+      userId: gennaro.id,
+      profile: gennaro.profile,
+      role: "admin",
+      joinedAt: "2026-03-23T09:00:00.000Z",
+    },
+    {
+      id: "gm_2",
+      groupId: "group_ml_systems",
+      userId: maya.id,
+      profile: maya.profile,
+      role: "member",
+      joinedAt: "2026-03-23T09:30:00.000Z",
+    },
+    {
+      id: "gm_3",
+      groupId: "group_ml_systems",
+      userId: amina.id,
+      profile: amina.profile,
+      role: "member",
+      joinedAt: "2026-03-23T10:00:00.000Z",
+    },
+    {
+      id: "gm_4",
+      groupId: "group_bio_discovery",
+      userId: amina.id,
+      profile: amina.profile,
+      role: "admin",
+      joinedAt: "2026-03-22T14:00:00.000Z",
+    },
+    {
+      id: "gm_5",
+      groupId: "group_bio_discovery",
+      userId: gennaro.id,
+      profile: gennaro.profile,
+      role: "member",
+      joinedAt: "2026-03-22T15:00:00.000Z",
+    },
+  ]
+
+  const demoGroupAnnouncements: GroupAnnouncement[] = [
+    {
+      id: "gann_1",
+      groupId: "group_ml_systems",
+      authorProfile: gennaro.profile,
+      title: "Welcome to the ML Systems Lab Circle",
+      body: "This is a space for sharing working papers, reading lists, and open questions around ML systems, agents, and evaluation. Post early-stage ideas and let the group give feedback before conference deadlines.",
+      createdAt: "2026-03-23T09:05:00.000Z",
+    },
+    {
+      id: "gann_2",
+      groupId: "group_ml_systems",
+      authorProfile: maya.profile,
+      title: "Reading list: agent evaluation baselines",
+      body: "I added two papers to the shared reading list that cover structured evaluation traces and reviewer confidence modeling. Would love to discuss at next week's sync.",
+      createdAt: "2026-03-23T11:00:00.000Z",
+    },
+    {
+      id: "gann_3",
+      groupId: "group_bio_discovery",
+      authorProfile: amina.profile,
+      title: "Circle kickoff: computational biology meets optimization",
+      body: "Starting this private circle for early-stage collaboration between biology and optimization researchers. Feel free to add papers to the reading list and post open problems.",
+      createdAt: "2026-03-22T14:05:00.000Z",
+    },
+  ]
+
+  const demoGroupReadingListItems: GroupReadingListItem[] = [
+    {
+      id: "grli_1",
+      groupId: "group_ml_systems",
+      paperId: "paper_public_2",
+      paper: getPublicPaper(requirePaper("paper_public_2")),
+      addedBy: maya.profile,
+      note: "Foundational for our discussion on structured evaluation traces.",
+      addedAt: "2026-03-23T11:05:00.000Z",
+    },
+    {
+      id: "grli_2",
+      groupId: "group_ml_systems",
+      paperId: "paper_public_1",
+      paper: getPublicPaper(requirePaper("paper_public_1")),
+      addedBy: gennaro.profile,
+      note: "Context on why collaboration-first matters for this group.",
+      addedAt: "2026-03-23T09:10:00.000Z",
+    },
+    {
+      id: "grli_3",
+      groupId: "group_bio_discovery",
+      paperId: "paper_public_3",
+      paper: getPublicPaper(requirePaper("paper_public_3")),
+      addedBy: amina.profile,
+      note: "Cross-disciplinary discovery — directly relevant to our circle mission.",
+      addedAt: "2026-03-22T14:10:00.000Z",
+    },
+  ]
+
+  const groupsWithCounts = demoGroups.map((group) => ({
+    ...group,
+    memberCount: demoGroupMembers.filter((m) => m.groupId === group.id).length,
+    paperCount: demoGroupReadingListItems.filter((i) => i.groupId === group.id).length,
+    announcementCount: demoGroupAnnouncements.filter((a) => a.groupId === group.id).length,
+  }))
+
   const papersWithCommentCounts = papers.map((paper) => ({
     ...paper,
     commentCount: comments.filter((comment) => comment.paperId === paper.id).length,
@@ -572,6 +732,10 @@ function createInitialState(): DemoState {
     submissions,
     peerReviews,
     opportunities,
+    groups: groupsWithCounts,
+    groupMembers: demoGroupMembers,
+    groupAnnouncements: demoGroupAnnouncements,
+    groupReadingListItems: demoGroupReadingListItems,
   }
 }
 
@@ -609,6 +773,14 @@ export async function readDemoState(): Promise<DemoState> {
       opportunities: Array.isArray(parsed.opportunities)
         ? parsed.opportunities
         : initial.opportunities,
+      groups: Array.isArray(parsed.groups) ? parsed.groups : initial.groups,
+      groupMembers: Array.isArray(parsed.groupMembers) ? parsed.groupMembers : initial.groupMembers,
+      groupAnnouncements: Array.isArray(parsed.groupAnnouncements)
+        ? parsed.groupAnnouncements
+        : initial.groupAnnouncements,
+      groupReadingListItems: Array.isArray(parsed.groupReadingListItems)
+        ? parsed.groupReadingListItems
+        : initial.groupReadingListItems,
     }
     await writeFile(filePath, JSON.stringify(normalized, null, 2))
     return normalized

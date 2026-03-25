@@ -261,6 +261,81 @@ export const peerReviewSchema = z.object({
 })
 export type PeerReview = z.infer<typeof peerReviewSchema>
 
+export const groupVisibilitySchema = z.enum(["public", "private"])
+export type GroupVisibility = z.infer<typeof groupVisibilitySchema>
+
+export const groupMemberRoleSchema = z.enum(["admin", "member"])
+export type GroupMemberRole = z.infer<typeof groupMemberRoleSchema>
+
+export const groupSchema = z.object({
+  id: z.string(),
+  slug: z.string(),
+  name: z.string(),
+  description: z.string(),
+  visibility: groupVisibilitySchema,
+  topics: z.array(topicSchema),
+  createdBy: profileSchema.nullable(),
+  memberCount: z.number().int().nonnegative(),
+  paperCount: z.number().int().nonnegative(),
+  announcementCount: z.number().int().nonnegative(),
+  isViewerMember: z.boolean(),
+  createdAt: z.string(),
+})
+export type Group = z.infer<typeof groupSchema>
+
+export const groupMemberSchema = z.object({
+  id: z.string(),
+  groupId: z.string(),
+  userId: z.string(),
+  profile: profileSchema,
+  role: groupMemberRoleSchema,
+  joinedAt: z.string(),
+})
+export type GroupMember = z.infer<typeof groupMemberSchema>
+
+export const groupAnnouncementSchema = z.object({
+  id: z.string(),
+  groupId: z.string(),
+  authorProfile: profileSchema.nullable(),
+  title: z.string(),
+  body: z.string(),
+  createdAt: z.string(),
+})
+export type GroupAnnouncement = z.infer<typeof groupAnnouncementSchema>
+
+export const groupReadingListItemSchema = z.object({
+  id: z.string(),
+  groupId: z.string(),
+  paperId: z.string(),
+  paper: publicPaperSchema,
+  addedBy: profileSchema.nullable(),
+  note: z.string().nullable(),
+  addedAt: z.string(),
+})
+export type GroupReadingListItem = z.infer<typeof groupReadingListItemSchema>
+
+export const createGroupInputSchema = z.object({
+  name: z.string().min(3).max(120),
+  description: z.string().min(10).max(2000),
+  visibility: groupVisibilitySchema,
+  topicLabels: z.array(z.string()).max(8),
+})
+export type CreateGroupInput = z.infer<typeof createGroupInputSchema>
+
+export const createGroupAnnouncementInputSchema = z.object({
+  groupSlug: z.string().min(1),
+  title: z.string().min(3).max(200),
+  body: z.string().min(10).max(4000),
+})
+export type CreateGroupAnnouncementInput = z.infer<typeof createGroupAnnouncementInputSchema>
+
+export const addToGroupReadingListInputSchema = z.object({
+  groupSlug: z.string().min(1),
+  paperSlug: z.string().min(1),
+  note: z.string().max(500).optional(),
+})
+export type AddToGroupReadingListInput = z.infer<typeof addToGroupReadingListInputSchema>
+
 export const opportunityKindSchema = z.enum([
   "visiting_student",
   "internship",
