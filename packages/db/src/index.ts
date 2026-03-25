@@ -145,7 +145,11 @@ export interface PapersRepository {
   }): Promise<User>
   updateViewerProfile(input: UpdateViewerProfileInput, viewerHandle?: string | null): Promise<User>
   getRoadmap(): Promise<RoadmapBucket>
-  getFeed(input?: { viewerHandle?: string | null; query?: string | null }): Promise<FeedEntry[]>
+  getFeed(input?: {
+    viewerHandle?: string | null
+    query?: string | null
+    since?: string | null
+  }): Promise<FeedEntry[]>
   listTrendingPapers(input?: { viewerHandle?: string | null; limit?: number }): Promise<FeedEntry[]>
   getPaperBySlug(slug: string, viewerHandle?: string | null): Promise<PaperDetail | null>
   getProfileByHandle(handle: string, viewerHandle?: string | null): Promise<ProfileDetail | null>
@@ -431,13 +435,19 @@ class DemoRepository implements PapersRepository {
   async getFeed(input?: {
     viewerHandle?: string | null
     query?: string | null
+    since?: string | null
   }): Promise<FeedEntry[]> {
     const state = await readDemoState()
     const viewer = await this.getViewer(input?.viewerHandle)
     const normalizedQuery = input?.query?.trim().toLowerCase()
+    const sinceMs = input?.since ? new Date(input.since).getTime() : null
 
     return state.papers
       .filter((paper) => {
+        if (sinceMs && new Date(paper.createdAt).getTime() < sinceMs) {
+          return false
+        }
+
         if (!normalizedQuery) {
           return true
         }

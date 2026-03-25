@@ -11,7 +11,7 @@ const repository = createRepository()
 export default async function FeedPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>
+  searchParams: Promise<{ q?: string; since?: string }>
 }) {
   const params = await searchParams
   const viewerHandle = await getViewerHandleFromCookies()
@@ -19,6 +19,7 @@ export default async function FeedPage({
     repository.getFeed({
       viewerHandle,
       query: params.q,
+      since: params.since,
     }),
     repository.listTrendingPapers({
       viewerHandle,
