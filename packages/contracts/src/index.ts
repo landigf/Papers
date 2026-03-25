@@ -439,6 +439,38 @@ export function slugify(value: string): string {
     .replace(/^-+|-+$/g, "")
 }
 
+/**
+ * Build an absolute URL suitable for sharing externally (e.g. Telegram deep links).
+ * Next.js Link handles basePath for in-app navigation, but external URLs must
+ * include it manually.
+ */
+export function buildDeepLink(publicUrl: string, basePath: string, route: string): string {
+  const base = publicUrl.replace(/\/+$/, "")
+  const prefix = basePath.replace(/\/+$/, "")
+  const path = route.startsWith("/") ? route : `/${route}`
+  return `${base}${prefix}${path}`
+}
+
+export function paperDeepLink(publicUrl: string, basePath: string, slug: string): string {
+  return buildDeepLink(publicUrl, basePath, `/papers/${slug}`)
+}
+
+export function profileDeepLink(publicUrl: string, basePath: string, handle: string): string {
+  return buildDeepLink(publicUrl, basePath, `/u/${handle}`)
+}
+
+export function feedDeepLink(publicUrl: string, basePath: string): string {
+  return buildDeepLink(publicUrl, basePath, "/feed")
+}
+
+export function groupDeepLink(publicUrl: string, basePath: string, slug: string): string {
+  return buildDeepLink(publicUrl, basePath, `/groups/${slug}`)
+}
+
+export function conferenceDeepLink(publicUrl: string, basePath: string, slug: string): string {
+  return buildDeepLink(publicUrl, basePath, `/conferences/${slug}`)
+}
+
 export const updateViewerProfileInputSchema = z.object({
   headline: z.string().max(160),
   bio: z.string().max(2000),

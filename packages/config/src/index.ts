@@ -34,6 +34,8 @@ const configSchema = z.object({
   PAPERS_XAI_API_KEY: z.string().optional(),
   PAPERS_XAI_MODEL: z.string().default("grok-4-1-fast"),
   PAPERS_XAI_BASE_URL: z.string().default("https://api.x.ai/v1"),
+  PAPERS_PUBLIC_URL: z.string().default("http://localhost:3000"),
+  PAPERS_BASE_PATH: z.string().default("/papers"),
   TRIGGER_SECRET_KEY: z.string().optional(),
   TRIGGER_PROJECT_REF: z.string().optional(),
 })
