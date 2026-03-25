@@ -1,5 +1,7 @@
 import { GrokProvider } from "@papers/ai"
 import { task } from "@trigger.dev/sdk"
+import { PDFDocument } from "pdf-lib"
+import { downloadObject, uploadObject } from "../lib/r2"
 
 const provider = new GrokProvider()
 
@@ -30,9 +32,23 @@ export const refreshFeedSnapshot = task({
 export const scrubBlindPdfMetadata = task({
   id: "scrub-blind-pdf-metadata",
   run: async (payload: { storageKey: string }) => {
+    const pdfBytes = await downloadObject(payload.storageKey)
+    const doc = await PDFDocument.load(pdfBytes)
+
+    doc.setTitle("")
+    doc.setAuthor("")
+    doc.setSubject("")
+    doc.setKeywords([])
+    doc.setProducer("Papers")
+    doc.setCreator("Papers")
+
+    const scrubbed = await doc.save()
+    await uploadObject(payload.storageKey, scrubbed, "application/pdf")
+
     return {
       storageKey: payload.storageKey,
       scrubbed: true,
+      sizeBytes: scrubbed.byteLength,
     }
   },
 })
