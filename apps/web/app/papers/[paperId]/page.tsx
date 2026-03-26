@@ -1,5 +1,5 @@
 import { createRepository } from "@papers/db"
-import { ActionButton, Avatar, Pill, SectionCard, StatBadge } from "@papers/ui"
+import { ActionButton, Avatar, Pill, SectionCard } from "@papers/ui"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { ConferenceCard } from "../../../components/conference-card"
@@ -15,6 +15,16 @@ function formatDate(dateStr: string): string {
     month: "long",
     day: "numeric",
   })
+}
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const hours = Math.floor(diff / 3600000)
+  if (hours < 1) return "just now"
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  if (days < 30) return `${days}d ago`
+  return `${Math.floor(days / 30)}mo ago`
 }
 
 function generateBibtex(paper: {
@@ -55,143 +65,150 @@ export default async function PaperPage({ params }: { params: Promise<{ paperId:
   return (
     <div className="content-columns">
       <div className="content-main">
-        {/* Main paper section */}
-        <SectionCard
-          eyebrow={isBlind ? "Blind submission" : "Paper"}
-          title={paper.title}
-        >
-          {/* arXiv-style metadata block */}
-          <dl className="paper-metadata">
-            <dt>Authors</dt>
-            <dd>
-              {isBlind ? (
-                "Identity hidden for blind review"
-              ) : author ? (
-                <Link href={`/u/${author.handle}`}>
-                  <strong>{author.displayName}</strong>
-                </Link>
-              ) : (
-                "Unknown"
-              )}
-            </dd>
-            <dt>Submitted</dt>
-            <dd>{formatDate(paper.createdAt)}</dd>
-            {paper.updatedAt !== paper.createdAt && (
-              <>
-                <dt>Last revised</dt>
-                <dd>{formatDate(paper.updatedAt)}</dd>
-              </>
-            )}
-            <dt>Categories</dt>
-            <dd>
-              <div className="pill-row">
-                {paper.topics.map((topic) => (
-                  <Pill key={topic.id}>{topic.label}</Pill>
-                ))}
-              </div>
-            </dd>
-          </dl>
-
-          {/* GitHub-style star/stats bar */}
-          <div className="paper-meta">
-            <form action={toggleStarAction}>
-              <input name="paperSlug" type="hidden" value={paper.slug} />
-              <ActionButton type="submit">
-                {paper.isStarredByViewer ? "★ Starred" : "☆ Star"} ({paper.starCount})
-              </ActionButton>
-            </form>
-            <StatBadge icon="💬" value={detail.comments.length} />
-            <StatBadge icon="👥" value={paper.followerCount} />
+        <div className="paper-page">
+          {/* Author header — LinkedIn post style */}
+          <div className="feed-card-header">
+            {isBlind ? (
+              <Avatar name="?" />
+            ) : author ? (
+              <Link href={`/u/${author.handle}`}>
+                <Avatar name={author.displayName} />
+              </Link>
+            ) : null}
+            <div className="feed-card-author-info">
+              <span className="feed-card-author-name">
+                {isBlind ? (
+                  "Anonymous (blind review)"
+                ) : author ? (
+                  <Link href={`/u/${author.handle}`}>{author.displayName}</Link>
+                ) : (
+                  "Unknown"
+                )}
+              </span>
+              <span className="feed-card-author-detail">
+                {!isBlind && author?.affiliation ? `${author.affiliation} · ` : ""}
+                {formatDate(paper.createdAt)}
+                {paper.updatedAt !== paper.createdAt && ` · Updated ${timeAgo(paper.updatedAt)}`}
+              </span>
+            </div>
           </div>
 
+          {/* Title */}
+          <h1>{paper.title}</h1>
+
+          {/* Topics */}
+          {paper.topics.length > 0 && (
+            <div className="pill-row" style={{ marginBottom: "16px" }}>
+              {paper.topics.map((topic) => (
+                <Pill key={topic.id}>{topic.label}</Pill>
+              ))}
+            </div>
+          )}
+
           {/* Abstract */}
-          <h3>Abstract</h3>
           <p className="paper-abstract">{paper.abstract}</p>
 
-          {/* Full text */}
+          {/* Body */}
           <article className="markdown-body">
             {paper.bodyMarkdown.split("\n").map((line, i) => (
               <p key={`line-${i}`}>{line}</p>
             ))}
           </article>
-        </SectionCard>
 
-        {/* PDF viewer */}
-        {paper.assets.length > 0 && (
-          <SectionCard eyebrow="Attachment" title="Full paper (PDF)">
-            {paper.assets
-              .filter((asset) => asset.mimeType === "application/pdf")
-              .map((asset) => (
-                <div key={asset.id} style={{ marginBottom: "1rem" }}>
-                  <p className="field-note" style={{ marginBottom: "0.5rem" }}>
-                    {asset.fileName} ({Math.round(asset.fileSizeBytes / 1024)} KB)
-                    {asset.isMetadataScrubbed && " · Metadata scrubbed"}
-                  </p>
-                  <iframe
-                    src={getPublicFileUrl(asset.storageKey)}
-                    style={{
-                      width: "100%",
-                      height: "80vh",
-                      border: "1px solid var(--border)",
-                      borderRadius: "8px",
-                    }}
-                    title={`PDF: ${asset.fileName}`}
-                  />
-                </div>
-              ))}
-          </SectionCard>
-        )}
+          {/* PDF — inline, no card wrapper */}
+          {paper.assets.length > 0 && (
+            <>
+              <hr className="paper-divider" />
+              {paper.assets
+                .filter((asset) => asset.mimeType === "application/pdf")
+                .map((asset) => (
+                  <div key={asset.id}>
+                    <p className="field-note">
+                      {asset.fileName} ({Math.round(asset.fileSizeBytes / 1024)} KB)
+                      {asset.isMetadataScrubbed && " · Metadata scrubbed"}
+                    </p>
+                    <iframe
+                      src={getPublicFileUrl(asset.storageKey)}
+                      style={{
+                        width: "100%",
+                        height: "80vh",
+                        border: "1px solid var(--border)",
+                        borderRadius: "8px",
+                        marginTop: "8px",
+                      }}
+                      title={`PDF: ${asset.fileName}`}
+                    />
+                  </div>
+                ))}
+            </>
+          )}
 
-        {/* BibTeX citation (arXiv-style) */}
-        <SectionCard eyebrow="Citation" title="BibTeX">
-          <div className="bibtex-block">{bibtex}</div>
-        </SectionCard>
+          {/* Social interaction bar */}
+          <div className="social-bar">
+            <form action={toggleStarAction}>
+              <input name="paperSlug" type="hidden" value={paper.slug} />
+              <button
+                className={`social-bar-item ${paper.isStarredByViewer ? "active" : ""}`}
+                type="submit"
+              >
+                {paper.isStarredByViewer ? "★ Starred" : "☆ Star"} {paper.starCount}
+              </button>
+            </form>
+            <span className="social-bar-item">💬 {detail.comments.length}</span>
+            <span className="social-bar-item">👥 {paper.followerCount}</span>
+          </div>
 
-        {/* Discussion (GitHub-style) */}
-        <SectionCard eyebrow="Discussion" title={`Comments (${detail.comments.length})`}>
+          {/* Comments */}
+          <hr className="paper-divider" />
+          <div className="paper-section-title">Comments ({detail.comments.length})</div>
+
           <form action={createCommentAction} className="stacked-form" id="comments">
             <input name="paperId" type="hidden" value={paper.slug} />
-            <label>
-              Add a comment
-              <textarea
-                name="body"
-                placeholder="Ask for clarification, point to related work, or suggest a collaborator angle."
-                required
-                rows={4}
-              />
-            </label>
-            <ActionButton type="submit">Post comment</ActionButton>
+            <textarea
+              name="body"
+              placeholder="Add a comment…"
+              required
+              rows={3}
+            />
+            <ActionButton type="submit">Post</ActionButton>
           </form>
 
-          <div className="comment-stack">
-            {detail.comments.map((comment) => (
-              <article className="comment-card" key={comment.id}>
-                <div className="comment-header">
-                  <Avatar
-                    name={comment.authorProfile?.displayName ?? "?"}
-                    size="sm"
-                  />
-                  <span className="comment-author">
-                    {comment.authorProfile ? (
-                      <Link href={`/u/${comment.authorProfile.handle}`}>
-                        {comment.authorProfile.displayName}
-                      </Link>
-                    ) : (
-                      "Anonymous"
-                    )}
-                  </span>
-                  <span className="comment-date">{formatDate(comment.createdAt)}</span>
-                </div>
-                <p className="comment-body">{comment.body}</p>
-              </article>
-            ))}
-          </div>
-        </SectionCard>
+          {detail.comments.length > 0 && (
+            <div className="comment-stack" style={{ marginTop: "16px" }}>
+              {detail.comments.map((comment) => (
+                <article className="comment-card" key={comment.id}>
+                  <div className="comment-header">
+                    <Avatar
+                      name={comment.authorProfile?.displayName ?? "?"}
+                      size="sm"
+                    />
+                    <span className="comment-author">
+                      {comment.authorProfile ? (
+                        <Link href={`/u/${comment.authorProfile.handle}`}>
+                          {comment.authorProfile.displayName}
+                        </Link>
+                      ) : (
+                        "Anonymous"
+                      )}
+                    </span>
+                    <span className="comment-date">{timeAgo(comment.createdAt)}</span>
+                  </div>
+                  <p className="comment-body">{comment.body}</p>
+                </article>
+              ))}
+            </div>
+          )}
+
+          {/* BibTeX citation — at the very end */}
+          <hr className="paper-divider" />
+          <div className="paper-section-title">Citation</div>
+          <div className="bibtex-block">{bibtex}</div>
+        </div>
       </div>
 
       {/* Sidebar */}
       <aside className="content-side">
-        {/* Version history (GitHub-style timeline) */}
+        {/* Version history */}
         <SectionCard eyebrow="History" title="Version timeline">
           <div className="version-timeline">
             <div className="version-entry">
@@ -211,7 +228,7 @@ export default async function PaperPage({ params }: { params: Promise<{ paperId:
           </div>
         </SectionCard>
 
-        {/* Author card (LinkedIn-style) */}
+        {/* Author card */}
         {!isBlind && author && (
           <SectionCard eyebrow="Author" title={author.displayName}>
             <div style={{ display: "flex", gap: "12px", alignItems: "center", marginBottom: "12px" }}>

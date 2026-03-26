@@ -856,6 +856,56 @@ select {
   font-size: 0.85rem;
 }
 
+/* ========== Continuous page (paper detail) ========== */
+
+.paper-page {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 28px 32px;
+  box-shadow: var(--shadow-sm);
+}
+
+.paper-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 24px 0;
+}
+
+.paper-page h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  margin: 0 0 16px;
+  line-height: 1.25;
+}
+
+.paper-section-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0 0 12px;
+}
+
+/* Section title for feed/home headings without card wrapper */
+.section-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  margin: 8px 0 12px;
+}
+
+.section-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
 /* ========== Misc ========== */
 
 .reason-list {

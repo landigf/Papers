@@ -35,16 +35,14 @@ export default async function FeedPage({
   return (
     <div className="content-columns">
       <div className="content-main">
-        <SectionCard eyebrow="Feed" title="Research you care about">
-          <form className="search-form" method="GET">
-            <input
-              defaultValue={params.q ?? ""}
-              name="q"
-              placeholder="Search by topic, abstract, or title…"
-            />
-            <button type="submit">Search</button>
-          </form>
-        </SectionCard>
+        <form className="search-form" method="GET">
+          <input
+            defaultValue={params.q ?? ""}
+            name="q"
+            placeholder="Search by topic, abstract, or title…"
+          />
+          <button type="submit">Search</button>
+        </form>
 
         {feed.length === 0 ? (
           <div className="empty-state">

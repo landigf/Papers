@@ -69,12 +69,12 @@ export default async function HomePage() {
                 ? `${session.viewer.profile.headline ?? "Research profile ready."}`
                 : "Sign in to follow researchers, save interests, and publish on Papers."}
             </p>
-            <div className="pill-row">
-              <Pill>{session.authMode} mode</Pill>
-              <Pill>{session.orcid.configured ? "ORCID ready" : "ORCID pending config"}</Pill>
-              <Pill>
-                {conferences.filter((conference) => conference.status === "open").length} open calls
-              </Pill>
+            <div className="inline-stats">
+              <span>{session.authMode} mode</span>
+              <span>{session.orcid.configured ? "ORCID ready" : "ORCID pending"}</span>
+              <span>
+                {conferences.filter((c) => c.status === "open").length} open calls
+              </span>
             </div>
           </SectionCard>
         </div>
@@ -82,7 +82,10 @@ export default async function HomePage() {
 
       <div className="content-columns">
         <div className="content-main">
-          <SectionCard eyebrow="Latest" title="Recent papers">
+          {/* Feed items — no card wrapper, just a heading + cards */}
+          <div>
+            <span className="section-label">Latest</span>
+            <h2 className="section-title">Recent papers</h2>
             <div className="feed-stack">
               {feed.slice(0, 3).map((entry) => (
                 <FeedCard entry={entry} key={entry.id} />
@@ -91,19 +94,23 @@ export default async function HomePage() {
             <Link className="ghost-link" href="/feed" style={{ marginTop: "12px", display: "inline-block" }}>
               View full feed →
             </Link>
-          </SectionCard>
+          </div>
 
           {trending.length > 0 && (
-            <SectionCard eyebrow="Trending" title="Gaining momentum">
+            <div>
+              <span className="section-label">Trending</span>
+              <h2 className="section-title">Gaining momentum</h2>
               <div className="feed-stack">
                 {trending.map((entry) => (
                   <FeedCard entry={entry} key={entry.id} />
                 ))}
               </div>
-            </SectionCard>
+            </div>
           )}
 
-          <SectionCard eyebrow="Conferences" title="Calls for papers">
+          <div>
+            <span className="section-label">Conferences</span>
+            <h2 className="section-title">Calls for papers</h2>
             <div className="feed-stack">
               {conferences.slice(0, 2).map((conference) => (
                 <ConferenceCard conference={conference} key={conference.id} />
@@ -112,7 +119,7 @@ export default async function HomePage() {
             <Link className="ghost-link" href="/conferences" style={{ marginTop: "12px", display: "inline-block" }}>
               Browse all conferences →
             </Link>
-          </SectionCard>
+          </div>
         </div>
 
         <aside className="content-side">
